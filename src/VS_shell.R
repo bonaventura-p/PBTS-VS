@@ -1,20 +1,25 @@
 
+# VS_shell.R
+# Bonaventura Pacileo
+# This program cleans the space, loads the required packages  and shell calls all the others
+
+#clean the environment
+rm(list=ls())
+
+#checking wd
+wd<-getwd() #'//main.oecd.org/ASgenEDU/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS'
 
 
+#libraries
+library("magrittr")  
+library("ggrepel") #loads ggplot2  
+library("RColorBrewer") 
+library("scales") 
 
 
-
-
-
-
-
-
-
-
-source('src/config/VS_initfile.R')
-source('src/config/VS_techfuns.R')
-source('src/config/VS_tablefuns.R')
-source('src/config/VS_analysisfuns.R')
+source(paste(wd,'src/config', 'VS_techfuns.R', sep="/"))
+source(paste(wd,'src/config', 'VS_tablefuns.R', sep="/"))
+source(paste(wd,'src/config', 'VS_analysisfuns.R', sep="/"))
 
 source('src/dashboard/VS_ui.R')
 source('src/dashboard/VS_server.R')

@@ -7,7 +7,7 @@
 
 
 
-server2 <- function(input,output){
+server <- function(input,output){
   
   
   # download report
@@ -39,23 +39,23 @@ server2 <- function(input,output){
   # load national data sets
   folderInput <- shiny::reactive({
     switch(input$folder,
-           "Andorra" = "V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Andorra/")
+           "Andorra" = paste(wd, "data", "Andorra", sep="/"))
   })
 
   score.data <- shiny::reactive({
-    read.table( paste0(folderInput(), "score.data.txt"), header=T, sep="\t")
+    read.table( paste(folderInput(), "score.data.txt", sep="/"), header=T, sep="\t")
   }) 
 
   gold.data <- shiny::reactive({
-    read.table( paste0(folderInput(), "gold.data.txt"), header=T, sep="\t")
+    read.table( paste(folderInput(), "gold.data.txt", sep="/"), header=T, sep="\t")
   })   
   
   raw.data <- shiny::reactive({
-    read.table( paste0(folderInput(), "raw.data.txt"), header=T, sep="\t")
+    read.table( paste(folderInput(), "raw.data.txt", sep="/"), header=T, sep="\t")
   })   
   
   pca.data <- shiny::reactive({
-    read.table( paste0(folderInput(), "pca.data.txt"), header=T, sep="\t")
+    read.table( paste(folderInput(), "pca.data.txt", sep="/"), header=T, sep="\t")
   })   
   
  #####################
