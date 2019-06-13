@@ -1,3 +1,0 @@
-temptam.data %>%
-  dplyr::filter(.,  grepl("^PM\\d{4}Q\\d{2}[A-Z]*",item.name)) %>%
-  dplyr::mutate(.,ztam.value=(tam.value-mean(tam.value))/sd(tam.value)) ->tam.math
