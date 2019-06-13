@@ -1,0 +1,333 @@
+
+
+
+############################################
+######## Initial setup and data loading ####
+############################################
+
+#check lib paths
+#"//FS-CH-1.main.oecd.org/Users3/pacileo_b/R/win-library/3.4"
+.libPaths()
+#.libPaths(c("G:/R/win-library/3.4","Z:/R/R-3.4.4"))
+
+
+#clear the space
+rm(list=ls())
+
+
+
+#packages
+library("rmarkdown")
+library("fastDummies")
+library("xlsx")
+library("plyr")
+library("dplyr")
+library("magrittr")
+library("TAM")
+library("openxlsx") #for big excel files
+library("broom")
+library("zoo")
+library("intsvy")
+library("data.table")
+library(tidyr)
+library(Hmisc)
+
+
+#setting wd
+dirPisaForSchools2017<-'V:\\Pacileo_B\\NOBACKUP\\PISA PM\\PFS'
+
+setwd(dirPisaForSchools2017)
+getwd()
+
+
+#FunctionName
+#variable.name or variableName
+
+#school size function
+
+
+
+#mode function
+FunMode <- function(x) {
+  uniqv <- unique(x)
+  uniqv[which.max(tabulate(match(x, uniqv)))]
+}
+
+#rescale functions
+PisaPread<-function(x) {
+  pv_factor<-(0.883*(x)-0.4837)/1.1002
+  pv_factor*100+500
+}
+
+PisaPmath<-function(x) {
+  pv_factor<-(x+0.1344)/1.2838
+  pv_factor*100+500
+}
+
+PisaPscie<-function(x) {
+  pv_factor<-(x-0.1797)/1.0724
+  pv_factor*100+500
+}
+
+
+path2gold<-"V:/PISA/BACKUP/PISA/PISA for Schools/4. Countries/Colombia/Data/4. Administration in November 2018/Data from ICFES second round/StdQ_golddataset17 (14).xlsx"
+
+domains<-c("math","read","scie")
+
+
+#gold dataset
+gold_data<-read.xlsx(path2gold, sheet="Code",colNames=T)
+
+#############################################
+########### DATA PREPARATION ################
+#############################################
+
+
+
+#schoolid
+gold_data$stidsch<-gold_data$entid
+# 
+gold_data %<>% rename(.,W_FSTUWT=W_STU) # newname=oldname
+
+#rename plausible values
+for (domn in domains) {
+  
+  print(domn)
+  for (i in 1:5) {
+    print(i)
+    oldi<-paste("pv",i,domn,sep="")
+    newi<-paste("PV",i,toupper(domn),sep="")
+    colnames(gold_data)[colnames(gold_data)==oldi]<-newi
+    rm(newi,oldi)
+  }
+}
+#  
+#rename replicate weights
+for (i in 1:80) {
+  print(i)
+  oldi<-paste("rwgt",i,sep="")
+  newi<-paste("W_FSTR",i,sep="")
+  colnames(gold_data)[colnames(gold_data)==oldi]<-newi
+  rm(newi,oldi)
+}
+
+
+
+SchoolPfmceDS3 <-gold_data$stidsch %>% unique() %>% as.data.frame() %>% setnames("stidsch") 
+
+
+#custom analysis
+domains2<-"READ"
+
+#getAnywhere(intsvy.per.pv())
+for (domn in domains2) {
+  
+  print(domn)
+  domnPERF<-PercPisa(pvlabel=toupper(domn),per=c(25,75),weights="W_FSTUWT",by="stidsch",data=gold_data)
+  
+  #bottom 25
+  domnPERF %>%
+    filter(Percentiles == 25) %>%
+    select(.,stidsch,Score) %>%
+    setNames(c('stidsch',paste("my2btn_per",domn,sep='_'))) %>%
+    merge(x = SchoolPfmceDS3, y = ., by  ="stidsch", all = TRUE) %>%
+    {.}->SchoolPfmceDS3
+  
+  #top 25
+  domnPERF %>%
+    filter(Percentiles == 75) %>%
+    select(.,stidsch,Score) %>%
+    setNames(c('stidsch',paste("my2top_per",domn,sep='_'))) %>%
+    merge(x = SchoolPfmceDS3, y = ., by  ="stidsch", all = TRUE) %>%
+    {.}->SchoolPfmceDS3
+  
+}
+
+
+
+
+
+##############
+SchoolPfmceDS2 <-gold_data$stidsch %>% unique() %>% as.data.frame() %>% setnames("stidsch") 
+
+
+
+for (domn in domains) {
+  print(domn)
+  #mean
+  domnMean<-pisa.mean.pv(pvlabel=toupper(domn), by = "stidsch",data =gold_data)
+  
+  #top/bot cutoff scores
+  #change back to pisa.per.pv if needed
+  domnPERF<-PercPisa(pvlabel=toupper(domn),per=c(25,75),weights="W_FSTUWT",by="stidsch",data=gold_data)
+  
+  
+  #creating dataset
+  
+  #mean
+   domnMean %<>%
+     select(.,stidsch,Mean,matches("s.e.")) %>%
+     setnames(c("stidsch",paste(domn,"myscore",sep=''),paste(domn,"myscore_se",sep=''))) %>%
+     merge(x=SchoolPfmceDS2,y=.,by="stidsch",all=TRUE) %>%
+     {.}->SchoolPfmceDS2
+  
+  #bottom this to be used with pisa.per.pv syntax
+  # domnPERF %>%
+  #   filter(Percentiles == 25) %>%
+  #   select(.,stidsch,Score,matches("Std. err.")) %>%
+  #   setNames(c('stidsch',paste("mybtn_per",domn,sep='_'),paste("mybtn_per",domn,"se",sep='_'))) %>%
+  #   merge(x = SchoolPfmceDS2, y = ., by  ="stidsch", all = TRUE) %>%
+  #   {.}->SchoolPfmceDS2
+  # 
+  # #top
+  # domnPERF %>%
+  #   filter(Percentiles == 75) %>%
+  #   select(.,stidsch,Score,matches("Std. err.")) %>%
+  #   setNames(c('stidsch',paste("mytop_per",domn,sep='_'),paste("mytop_per",domn,"se",sep='_'))) %>%
+  #   merge(x = SchoolPfmceDS2, y = ., by  ="stidsch", all = TRUE) %>%
+  #   {.}->SchoolPfmceDS2
+  # 
+   #bottom 25
+   domnPERF %>%
+     filter(Percentiles == 25) %>%
+     select(.,stidsch,Score) %>%
+     setNames(c('stidsch',paste("my2btn_per",domn,sep='_'))) %>%
+     merge(x = SchoolPfmceDS2, y = ., by  ="stidsch", all = TRUE) %>%
+     {.}->SchoolPfmceDS2
+   
+   #top 25
+   domnPERF %>%
+     filter(Percentiles == 75) %>%
+     select(.,stidsch,Score) %>%
+     setNames(c('stidsch',paste("my2top_per",domn,sep='_'))) %>%
+     merge(x = SchoolPfmceDS2, y = ., by  ="stidsch", all = TRUE) %>%
+     {.}->SchoolPfmceDS2
+   
+   
+   
+  
+}
+
+# 
+SchoolPfmceDS2 %<>% rename(.,schoolid=stidsch)
+
+
+#####mean comparison
+
+#mine
+ColSchData0 <- select(SchoolPfmceDS2,schoolid,matches("^.{4}myscore$"))
+
+
+#ICFES
+ColSchData1<-read.xlsx("V:/PISA/BACKUP/PISA/PISA for Schools/4. Countries/Colombia/Data/4. Administration in November 2018/Data from ICFES second round/School_level_GoldDataset_Codebook (16).xlsx",sheet="Code",colNames=T)
+#top_per_read	btn_per_read	top_per_math	btn_per_math	top_per_sci	btn_per_sci
+#ColSchData2<-read.dta("V:/EDUECS1/NOBACKUP/D/R/colmean_check.dta")
+#STATA
+ColSchData2<-read.xlsx("V:/EDUECS1/NOBACKUP/D/R/colcheckSTAT.xlsx",colNames=T)
+
+ColSchData2 %<>% setNames(.,c('schoolid','mathSTATAscore','mathSTATAscore_se','readSTATAscore','readSTATAscore_se','scieSTATAscore','scieSTATAscore_se'))
+
+#merging
+ColSchData1 %<>% select(.,schoolid,matches("^.{3,4}score$")) %>%
+  merge(x = ColSchData0, y = ., by  ="schoolid", all = TRUE) 
+
+#matching STATA results 
+ColSchData1 %<>% merge(x=ColSchData2,y=.,by='schoolid',all=TRUE)
+
+
+
+Check<-select(ColSchData1,matches('score$'))
+
+attach(Check)
+
+#
+summary(mathSTATAscore-mathscore)
+#      Min.    1st Qu.     Median       Mean    3rd Qu.       Max. 
+#-0.0047539 -0.0020929  0.0002137  0.0002430  0.0025859  0.0046199 
+ summary(mathSTATAscore-mathscore)
+#Min.    1st Qu.     Median       Mean    3rd Qu.       Max. 
+#-5.116e-13 -2.274e-13  5.684e-14  2.779e-14  2.842e-13  5.116e-13 
+
+
+
+###quantile comparison
+
+#MyR their STD
+ColSchData0 <- select(SchoolPfmceDS2,schoolid,matches("^mytop_per_.{4}$|^mybtn_per_.{4}$"))
+
+#ICFES
+ColSchData1<-read.xlsx("V:/PISA/BACKUP/PISA/PISA for Schools/4. Countries/Colombia/Data/4. Administration in November 2018/Data from ICFES second round/School_level_GoldDataset_Codebook (16).xlsx",sheet="Code",colNames=T)
+#top_per_read	btn_per_read	top_per_math	btn_per_math	top_per_sci	btn_per_sci
+
+#STATA
+ColSchData2<-read.xlsx("V:/EDUECS1/NOBACKUP/D/R/colcheck.xlsx",colNames=T)
+
+#TANJA
+ColSchData3<-read.xlsx("V:/Pacileo_B/NOBACKUP/PISA PM/PFS/PFS_validation_Colombia-v2.xlsx",colNames=T)
+
+#STATADET
+ColSchData4<-read.xlsx("V:/EDUECS1/NOBACKUP/D/R/colcheckDET.xlsx",colNames=T)
+
+#my2
+SchoolPfmceDS3 %<>% rename(.,schoolid=stidsch)
+
+
+#getting data
+ColSchData1 %<>% select(.,schoolid,matches("^top_per|^btn_per")) %>%
+  merge(x = ColSchData0, y = ., by  ="schoolid", all = TRUE) 
+
+#matching STATA results 
+ColSchData1 %<>% merge(x=ColSchData2,y=.,by='schoolid',all=TRUE)
+
+#matching TANJA results
+ColSchData1 %<>% merge(x=ColSchData3,y=.,by='schoolid',all=TRUE)
+
+#matching STATADET results
+ColSchData1 %<>% merge(x=ColSchData4,y=.,by='schoolid',all=TRUE)
+
+#matching myR their STD persINTSVY results
+ColSchData1 %<>% merge(x=SchoolPfmceDS3,y=.,by='schoolid',all=TRUE)
+
+Check<-select(ColSchData1,matches('btn_per_math$'))
+
+attach(Check)
+
+#what do BRRs do in this context? source of difference?
+summary(STATAbtn_per_math-SASbtn_per_math)
+#
+# Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+# -3.717047 -0.033380 -0.008459 -0.086414  0.018134  0.045532 
+
+summary(STATAbtn_per_math-mybtn_per_math)
+# Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+# -3.278459 -1.074655 -0.654468 -0.763303 -0.004802  0.003739 
+
+summary(STATAbtn_per_math-btn_per_math)
+# Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+# -0.000007  0.576852  0.925401  1.232257  1.783071  4.702535 
+
+#no difference. also repest useless as no linking
+summary(STATAbtn_per_math-STATADETbtn_per_math)
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 0       0       0       0       0       0 
+
+summary(mybtn_per_math-SASbtn_per_math)
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# -3.7200  0.0300  0.6600  0.6769  1.0300  3.2700 
+
+summary(mybtn_per_math-my2btn_per_math)
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 0.280   1.290   1.790   1.996   2.560   4.920 
+
+#I replicated intsvy myself
+
+summary(btn_per_math-my2btn_per_math)
+
+
+### plot
+
+ColSchData1 %>% select(.,btn_per_math,my2btn_per_math) %>%
+  gather(key=Type, value=Value) %>% 
+  ggplot(aes(x=Value,fill=Type)) + 
+  geom_histogram(position="dodge",stat = "bin", binwidth=1)
+

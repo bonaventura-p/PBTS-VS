@@ -1,0 +1,6 @@
+coldata <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Colombia/Round3/score.data.txt", header=T, sep="\t")
+
+
+coldata %>%
+  select(., matches("^PM\\d{4}Q\\d{2}[A-Z]*")) %>%
+  tam(.)->cc

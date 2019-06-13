@@ -1,0 +1,180 @@
+# general analysis
+VSscale <-function(domn, resp, gender.data, gender.name) {
+  # PFS scale computes pl
+  # Args: domn=PISA domain
+  #       
+  # Returns: dataframe with s
+  
+  # subset scored data
+  resp %>%
+    select(.,matches(ifelse(domn == "read",
+                            "^PR\\d{4}Q\\d{2}[A-Z]*",
+                            ifelse(domn == "math",
+                                   "^PM\\d{4}Q\\d{2}[A-Z]*",
+                                    ifelse(domn=="scie","^PS\\d{4}Q\\d{2}[A-Z]*",
+                                           ""))))) -> score.input
+  # 1PL TAM model
+  score.input %>%
+    tam(.) -> tam.input
+  
+  #compute sig. diff stat
+  data.frame(item.name = rownames(tam.input$xsi), 
+             tam.value = tam.input$xsi$xsi) -> tam.output
+  
+  # plausible values 
+  tam.input %>% 
+    tam.pv(.,nplausible=5) -> pv.input
+  
+  # rel freq, pt biserial correlation
+  score.input %>% 
+    tam.ctt(., pvscores = pv.input$pv,  group=NULL , progress=TRUE) -> ctt.output
+  
+  #MNSQ/INFIT
+  tam.input %>%
+    tam.fit(.)->fit.data
+  
+  fit.data[[1]] %>% as.data.frame(.) -> fit.output
+  
+  #DIF gender
+  formulaA <- ~item+item:step+item*gender
+  
+  #gender variable as values
+  gender<-gender.data[,gender.name] #1 female, 2 male
+  
+  #Set up facet variable
+  facets <- as.data.frame(gender)
+  
+  score.input %>%
+    tam.mml.mfr( ., facets= facets , formulaA = formulaA ) ->dif.data
+  
+  dif.data[[5]] %>%
+      as.data.frame(.) -> dif.output
+  
+  
+  # final wrap-up create list
+  list("tam.output" = tam.output, "ctt.output" = ctt.output,
+       "fit.output"= fit.output, "dif.output" = dif.output) -> VSoutput 
+   
+  VSoutput %>% 
+   return(.)
+  
+} 
+
+
+#wrapper
+VSscaleloop<-function(resp,gender.data,gender.name) {
+ 
+  domains<-c("math") #pleaase update
+  ResList<-list()
+  
+for (domn in domains) {  
+  
+
+  VSscale(domn=domn, resp=resp, gender.data=gender.data, gender.name=gender.name)->resdomn
+  
+  ResList[[length(ResList)+1]] <-resdomn
+  
+  names(ResList)[[length(ResList)]] <- domn
+  
+}
+  ResList %>%
+    return(.)
+  
+}
+
+##############################################
+#Table 2. Students’ sample: grade gender
+##############################################
+
+#please add
+
+#################################################################
+#Table 3. Correlation between score frequencies 0,1,2 pilot 
+####################################################################
+
+PtBis<-function(ctt.data,intl.ctt) {
+  
+  ctt.data %>%
+    select(., item, Categ, RelFreq) %>%
+    dplyr::rename(., item.name=item) %>%
+    mutate(., RelFreq = RelFreq*100) %>%
+    spread(., key = Categ, value = RelFreq) %>% 
+    mutate_at(.,vars("2"),funs(replace(.,is.na(.),0))) %>%
+    full_join(., intl.ctt, by="item.name") -> table3.output
+  
+  table3.output %>%
+    return(.)
+  
+}
+
+
+#####################################
+# Table 7. Dodgy items based on difficulty differences
+###################################
+
+DiffItem<-function(tam.mod,intl.tam) {
+  
+  tam.mod %>%
+    dplyr::mutate(., ztam.value = (tam.value-mean(tam.value))/sd(tam.value),
+                  zdif = if_else(
+                    ztam.value - intl.tam$ztam.value >= qnorm(0.975), 1,
+                    if_else(ztam.value - intl.tam$ztam.value <= -qnorm(0.975), -1,0))) %>%
+    full_join(., intl.tam, by="item.name") -> table7.output
+  
+  table7.output %>%
+    return(.)
+  
+}
+
+
+#####################################################
+#Table 8. Dodgy items based on coefficient MNSQ:
+####################################################
+
+Infit<- function(tam.fit) {
+  
+  tam.fit %>%
+    select(., parameter, Infit, Infit_t)%>%
+    mutate(., w.mnsq = if_else(Infit > 1.2, 1, if_else(Infit < 0.8, 1, 0))) -> table8.output
+  
+  table8.output %>%
+    return(.)
+}
+
+############################################
+#Table 9. Dodgy items based on DIF criteria
+############################################
+
+DIFitem<-function(DIF.mod) {
+  
+  DIF.length <- dim(DIF.mod)
+  
+  DIF.mod %>%  
+    select(., item, xsi.item) %>%
+    mutate(., gender=substr(item,17,18),item=substr(item,1,9)) %>%
+    spread(., key = gender, value = xsi.item) %>%
+    mutate(., seq=seq(1,DIF.length[1]/2), gdif = if_else(`2` - `1` > 0.25, 1, if_else(`2` - `1` < -0.25, -1, 0))) -> table9.output #difference as boys-girls
+  
+  table9.output %>%
+    return(.)
+}
+
+
+
+#test
+tam.data %>%
+  dplyr::filter(.,  grepl("^PM\\d{4}Q\\d{2}[A-Z]*",item.name)) %>%
+  dplyr::mutate(.,ztam.value=(tam.value-mean(tam.value))/sd(tam.value)) ->tam.math
+
+a<-VSscale(domn="math", resp=score.data, gender.data=gold.data, gender.name="ST004Q01_15")
+a3<-PtBis(ctt.data=a$ctt.output,intl.ctt = temp.intlfreq)
+
+a7<-DiffItem(tam.mod=a$tam.output,intl.tam = tam.math)
+
+a8<-Infit(tam.fit = a$fit.output)
+
+a9<-DIFitem(DIF.mod = a$dif.output)
+
+# Theoretically, when candidates and items are opposite each other on the map, the difficulty of the item.est
+# and the ability of the candidate are comparable, so the candidate has approximately a 50% probability
+# of answering the item correctly. 

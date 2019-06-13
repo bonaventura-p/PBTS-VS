@@ -1,0 +1,256 @@
+
+# Scaling Functions for PISA for Schools
+# Bonaventura Pacileo
+# This program contains the functions and packages to create the cognitive scales of PBTS
+
+# functions to be created:
+
+# PcaPrep: input stud questionnaire, output dummies+age
+# PISAresults: input primary analysis results, output plots/tables for mean, top/bot
+
+
+# sapply(list.files(pattern="[.]R$", path="R/", full.names=TRUE), source);
+
+#clean the environment
+rm(list=ls())
+
+#setting wd
+dirPisaForSchools2017<-'V:\\Pacileo_B\\NOBACKUP\\PISA PM\\PFS'
+
+setwd(dirPisaForSchools2017)
+getwd()
+
+#libraries
+library(dismo)
+library(tidyverse)
+library(caret)
+library(pls)
+library(magrittr)
+library(ggplot2)
+library(reshape2)
+library(stats)
+
+library("rmarkdown")
+library("fastDummies")
+library("xlsx")
+library("plyr")
+library("TAM")
+library("openxlsx") #for big excel files
+library("broom")
+library("zoo")
+library("intsvy")
+library("data.table")
+
+
+#Functions
+PisaRescale <- function(x,domn) {
+  # PisaRescale convers logit scale from TAM x into PISA scale for selected domn
+  # Args: x= data frame from TAM logit scale with pvs
+  #     domn= domain as "read,domn,scie"
+  # Returns: a data fr
+  if (domn=="math") {
+    ((x+0.1344)/1.2838)*100+500 %>% 
+      return(.)
+  }
+  
+  else if(domn=="scie") {
+    ((x-0.1797)/1.0724)*100+500 %>%
+      return(.)
+  }
+  
+  else if(domn=="read") {
+    ((0.883*(x)-0.4837)/1.1002)*100+500 %>%
+      return(.)
+  }
+}
+
+
+#mode function
+FunMode <- function(x) {
+  uniqv <- unique(x)
+  uniqv[which.max(tabulate(match(x, uniqv)))]
+}
+
+AnchorValues<-function(domn,score.data, item.data) {
+# Anchor Values creates a data.frame with item position and parameter of the correct size given domn/country
+# Args: domn=domain in "read","math","scie" 
+#   score.data =scored dataset, 
+#   item.data= tam parameters file, names item.name and tam.value
+#  Returns: a dataframe with item position and item parameter
+
+  if(domn=="math") {
+    item.data  %>%
+      mutate(item.code = stringr::str_extract(string = item.name,
+                                              pattern = '^PM\\d{4}Q\\d{2}[A-Z]*')) %>%
+      mutate(., id = match(item.code, names(score.data))) %>%
+      arrange(., id) %>%
+       filter(., !(is.na(id))) %>%
+        mutate(., id = 1:nrow(.)) %>% 
+          dplyr::rename(., tam=tam.value) %>%
+            select(., id, tam) %>%
+              return(.)
+  }
+  
+  else if(domn=="read") {
+    item.data  %>%
+      mutate(item.code = stringr::str_extract(string = item.name,
+                                              pattern = '^PR\\d{4}Q\\d{2}[A-Z]*')) %>%
+      mutate(., id = match(item.code, names(score.data))) %>%
+        arrange(., id) %>%
+          filter(., !(is.na(id))) %>%
+            mutate(., id = 1:nrow(.)) %>% 
+              dplyr::rename(., tam=tam.value) %>%
+                select(., id, tam) %>%
+                  return(.)
+  }
+  else if(domn=="scie"){
+    item.data  %>%
+      mutate(item.code = stringr::str_extract(string = item.name,
+                                              pattern = '^PS\\d{4}Q\\d{2}[A-Z]*')) %>%
+      mutate(., id = match(item.code, names(score.data))) %>%
+        arrange(., id) %>%
+          filter(., !(is.na(id))) %>%
+            mutate(., id = 1:nrow(.)) %>% 
+              dplyr::rename(., tam=tam.value) %>%
+                select(., id, tam) %>%
+                return(.)
+  } 
+  
+}
+
+PcaComp  <-  function(pca.data,pctvar=0.95) {
+# PcaComp computes PCA components for a given input file and stores pctvar% components
+  # Args: pca.data= data frame with the input variables, in case of PFS all dummified stud items+age
+  #       pctvar= the threshold of % of explained variance required 
+  # Returns: a data frame with the PC components up to pctvar%
+  
+  set.seed(1992) #replicable results
+  
+  pca.data %>%
+    select(.,matches("^age|^AP")) %>%
+      prcomp(., retx = TRUE, center = TRUE, scale. = TRUE)-> pca.res
+  
+    pca.res$x[, cumsum(pca.res$sdev^2)/sum(pca.res$sdev^2) < pctvar] %>%
+      as.data.frame(.) %>%
+        return(.)
+}
+
+
+DirectRegs <- function(stu.data, raw.data) {
+# DirectRegs creates a dataset for the direct regressors of the IRT model
+  # Args: stu.data=student questionnaire data, e.g. gold_data
+  #       raw.data=raw scores dataset, for computing % not reached
+  # Returns: a data frame with direct regressors: Grade,Gender,HISEI, Booklet dummies and school dummies
+  
+  matrix(ncol=0,nrow=raster::nrow(raw.data)) %>%  as.data.frame(.) -> direct.regs
+  
+  # booklet structure defined and joined to main data frame 
+  cbind(c(1,2,3,4,5,6,7),c(57,61,55,63,63,65,59)) %>% 
+      as.data.frame() %>% 
+        dplyr::rename(., bookid= V1, nitems= V2 ) %>% 
+          plyr::join(raw.data, ., by='bookid', type = "left", match = "all") -> raw.data
+    
+  # rowsums of notreached divided by total number of items in the booklet
+  (rowSums(select(raw.data,matches("^P[RSM]\\d{4}Q\\d{2}.?$"))=="r" |
+    select(raw.data,matches("^P[RSM]\\d{4}Q\\d{2}.?$"))=="rr" |
+      select(raw.data,matches("^P[RSM]\\d{4}Q\\d{2}.?$"))=="rrr" |
+        select(raw.data,matches("^P[RSM]\\d{4}Q\\d{2}.?$"))=="rrrr" |
+          select(raw.data,matches("^P[RSM]\\d{4}Q\\d{2}.?$"))=="rrrrr")
+            )/raw.data$nitems -> direct.regs$not.reached
+    
+  # getting grade gender (recoded as 0 1), hisei and bookid  and renaming them
+    stu.data %>%
+      select(.,matches("ST001Q01_15|ST004Q01_15|HISEI|bookid|stidsch")) %>%
+        dplyr::rename(., grade=ST001Q01_15, gender=ST004Q01_15,hisei=HISEI) %>%
+            mutate(., gender=gender-1) %>%
+              cbind(., direct.regs) -> direct.regs
+  
+  # creating deviation contrast coded dummies for booklets 
+    for (i in 1:6) {
+      newi <- paste("B", i, sep="")
+      
+      direct.regs$booki=case_when(
+        direct.regs$bookid != i~ 0,
+        direct.regs$bookid== i ~ 1)
+      
+      # replacing to -1 if booklet 7
+      direct.regs[direct.regs$bookid==7, ] %<>% mutate_at(., vars(matches('^booki$')), ~-1)
+    
+      names(direct.regs)[names(direct.regs)=='booki'] <- newi
+      rm(newi)
+    }
+
+  # creating school dummies with -1 for the largest one
+  direct.regs %<>% fastDummies::dummy_cols(., select_columns = "stidsch")
+    
+  # replace to -1
+  direct.regs[direct.regs$stidsch ==FunMode(direct.regs[, 'stidsch']),] %<>% mutate_at(., vars(matches('^stidsch_')), ~-1)
+    
+  # drop dummy of the largest one, in principle dummy cols has remove_most_frequent_dummy option
+  direct.regs %<>% .[, !(colnames(.)==paste('stidsch_', FunMode(.[, 'stidsch']), sep=''))]
+ 
+  # final wrap up
+  direct.regs %>%
+    .[!(names(.) %in% c("bookid", "stidsch"))] %>%
+      sapply(., as.numeric) %>%
+        as.data.frame(.) %>%
+          return(.)
+}
+  
+  
+
+
+
+PFSscale <-function(domn, resp, Y, xsi.fixed, aux) {
+# PFS scale computes plausible values for given domain using PBTS model 
+  # and merges aux variables(weights etc) for secondary analysis
+# Args: domn=PISA domain
+  #       resp=scored data
+  #       Y= direct regressors
+  #       xsi.fixed= item parameters
+  #       aux= auxiliary variables DataFrame
+  # Returns: dataframe with pv for domain and aux variables
+  
+  # domn must be a string e.g. domn="read"
+  
+  if (domn=="read"){
+    set.seed(1992)
+    
+    # marginal model for 1PL
+    resp %>%
+      select(.,matches("^PR\\d{4}Q\\d{2}.?$")) %>%
+      tam(., xsi.fixed = xsi.fixed, Y = Y, pid=NULL) -> marginal.model
+  }
+  else if (domn=="math") {
+    # marginal model for 1PL
+    resp %>%
+      select(.,matches("^PM\\d{4}Q\\d{2}.?$")) %>%
+      tam(., xsi.fixed = xsi.fixed, Y = Y, pid=NULL) -> marginal.model
+  }
+  else if (domn=="scie") {
+    # marginal model for 1PL
+    resp %>%
+      select(.,matches("^PS\\d{4}Q\\d{2}.?$")) %>%
+      tam(., xsi.fixed = xsi.fixed, Y = Y, pid=NULL) -> marginal.model
+  } 
+    
+    # computing plausible values
+    plausible.values <- tam.pv(marginal.model, nplausible = 5)
+    
+    # rename plausible values
+    pv.names <- paste('PV', 1:5, toupper(domn), sep='') 
+    
+    # final wrap-up
+    cbind(PisaRescale(x=plausible.values$pv[2:6],domn=domn), aux) %>%
+      setnames(., old = c('PV1.Dim1','PV2.Dim1', 'PV3.Dim1', 'PV4.Dim1', 'PV5.Dim1'), new = pv.names) %>%
+        as.data.frame(.) %>%
+        return(.)
+  
+} 
+#########################################################
+
+# tam.math <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Item parameters/tam.math.txt", header=T, sep="\t")
+# tam.read <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Item parameters/tam.read.txt", header=T, sep="\t")
+# tam.scie <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Item parameters/tam.scie.txt", header=T, sep="\t")
+
+tam.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Item parameters/tam.data.txt", header=T, sep="\t")

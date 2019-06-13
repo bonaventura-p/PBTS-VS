@@ -1,0 +1,73 @@
+
+library("TAM")
+
+
+#Data framework
+setwd("V:\\PISA\\BACKUP\\PISA\\PISA for Schools\\4. Countries\\Colombia\\Validation Workshop\\English\\PBTS_Workshop_03_ValidationStudy")
+getwd()
+pisa<-read.table("PISA2012_China_13items.csv",header=TRUE, sep=";",na.strings="7", dec=".")
+summary(pisa)
+dim(pisa)
+math<-pisa[,3:15]
+
+
+#1PL Model
+m1<-tam(math)
+
+summary(m1)
+m1fit<-tam.fit(m1)
+m1fit
+m1_estimates<-write.table(m1$item, file = "m1_estimates.csv", sep = ",", dec = ".", row.names = FALSE,col.names = TRUE)
+m1_fit<-write.table(m1fit$item, file = "m1_fit.csv", sep = ",", dec = ".", row.names = TRUE,col.names = TRUE)
+
+m1WLE<- tam.wle(m1)
+m1WLE$theta
+m1PV<-tam.pv(m1, nplausible = 5)
+m1PV$pv
+m1_ctt  <-tam.ctt(math, wlescore=m1WLE$theta, pvscores=m1PV$pv, group=NULL , progress=TRUE)
+m1_ctt<-write.table(m1_ctt, file = "m1_ctt.csv", sep = ",", dec = ".", row.names = FALSE,col.names = TRUE)
+
+#Plots
+
+plot(m1, items=1:12, export=FALSE)
+
+#install.packages('WrightMap') # it may have some compatibility problems depending of the R version
+IRT.WrightMap(m1, label.items.srt=90)
+
+
+
+#2PL Model
+m2<-tam.mml.2pl(math)
+summary(m2)
+m2fit<-tam.fit(m2)
+m2fit
+plot(m2, items=1:13, export=FALSE)
+
+#DIF
+gender <- pisa[,2]  ##  1=female, 2=male
+formulaA <- ~item+item:step+item*gender
+facets <- as.data.frame(gender)
+dif <- tam.mml.mfr( math, facets= facets , formulaA = formulaA )
+head(dif$item)
+summary(dif)
+m1_dif<-write.table(dif$xsi.facets, file = "m1_dif.csv", sep = ",", dec = ".", row.names = FALSE,col.names = TRUE)
+
+#plot for dif
+
+## item estimate vectors for girls and boys first
+even_indexes <-seq(2,26,2)
+odd_indexes<-seq(1,25,2)
+namesitem<-substr(dif$item$item, 0, 8)
+Items<-namesitem[c(odd_indexes)]
+Female <- dif$item$xsi.item[c(even_indexes)]
+Male <- dif$item$xsi.item[c(odd_indexes)]
+result <-data.frame(seq(1:13),Items,Female,Male,Female-Male)
+colnames(result)<-c("ID","Item","Female","Male","Diff")
+
+g_range <- range(Female, Male)
+plot(Female, type="o", col="blue", ylim=g_range, axes=FALSE, ann=FALSE)
+axis(1, at=1:13, lab=result$ID)
+axis (2, at=c(-3,-2,-1,0,1,2,3))
+lines(Male, type="o", pch=22, lty=2, col="red")
+legend(1, g_range[2], c("Female","Male"), cex=0.8, col=c("blue","red"), pch=21:22, lty=1:2)
+

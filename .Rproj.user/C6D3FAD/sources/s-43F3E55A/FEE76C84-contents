@@ -1,0 +1,12 @@
+##model comparison
+
+score.data2 %>%
+  select(.,matches("^PM")) %>% 
+  tam(.) -> mod1
+
+
+score.data2 %>%
+  select(.,matches("^PM")) %>% 
+  tam.mml.2pl(.,control=list(maxiter=500)) -> mod2
+
+anova(mod1,mod2)

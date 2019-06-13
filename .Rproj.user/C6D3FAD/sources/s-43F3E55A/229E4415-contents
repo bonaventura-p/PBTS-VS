@@ -1,0 +1,83 @@
+library(foreign)
+library(magrittr)
+library(openxlsx)
+
+#mutate_at(., vars(zdif), funs(replace(., is.na(.), 0))) %>%
+  
+#International pilot
+
+"Z:/9. Technical Issues/Merging Datasets/Pilot 2012/Pilot2012_CogTestOriginalResponses.sav" %>%
+  read.spss(.) %>%
+  as.data.frame(.)->pilotcog.data
+
+
+"Z:/9. Technical Issues/Merging Datasets/Pilot 2012/Pilot2012_StudentQuestionnaire.sav" %>%
+  read.spss(.) %>%
+  as.data.frame(.)->pilotstq.data
+
+names(pilotcog.data)
+
+
+"Z:/9. Technical Issues/Merging Datasets/Pilot 2012/Pilot2012_AllSchoolsforGoldataset.sav" %>%
+  read.spss(.) %>%
+  as.data.frame(.)->pilotgold.data
+
+
+
+#UAE
+"//main.oecd.org/ASgenEDU/PISA/BACKUP/PISA/PISA for Schools//4. Countries/UAE/Data/UAE_STQ_Release_(2017.08.31).sav" %>%
+  read.spss(.) %>%
+  as.data.frame(.)->UAEstq.data
+
+"//main.oecd.org/ASgenEDU/PISA/BACKUP/PISA/PISA for Schools/4. Countries/UAE/Data/UAE_School_(2017.09.13)_GOLD2A.xlsx" %>%
+  read.xlsx(.,colNames=TRUE) %>%
+  as.data.frame(.)->UAEschgold.data
+
+
+
+"Z:/4. Countries/UAE/Data/UAE_COGN_RAW_(2017.08.31).sav" %>%
+  read.spss(.,colNames=TRUE) %>%
+  as.data.frame(.)->UAEraw.data
+
+"Z:/4. Countries/UAE/Data/UAE_COGN_SCORED_(2017.08.31).sav" %>%
+  read.spss(.,colNames=TRUE) %>%
+  as.data.frame(.)->UAEcog.data
+
+
+#UK
+
+#2014-2015
+"Z:/4. Countries/United Kingdom/2015-2016 NFER/Data/09082016_PBTS_UK_Data/PBTS_UK_Data/2014_15_PBTSUK_data/15DataForOECD-ScoredResponses_C.sav" %>%
+  read.spss(.,colNames=TRUE) %>%
+  as.data.frame(.)->UK15cog.data
+
+"Z:/4. Countries/United Kingdom/2015-2016 NFER/Data/09082016_PBTS_UK_Data/PBTS_UK_Data/2014_15_PBTSUK_data/15DataForOECD-RawResponses_C.sav" %>%
+  read.spss(.,colNames=TRUE) %>%
+  as.data.frame(.)->UK15raw.data
+
+#2015-2016
+"Z:/4. Countries/United Kingdom/2015-2016 NFER/Data/09082016_PBTS_UK_Data/PBTS_UK_Data/2015_16_PBTSUK_data/15DataForOECD-ScoredResponses_C.sav" %>%
+  read.spss(.,colNames=TRUE) %>%
+  as.data.frame(.)->UK16cog.data
+
+"Z:/4. Countries/United Kingdom/2015-2016 NFER/Data/09082016_PBTS_UK_Data/PBTS_UK_Data/2015_16_PBTSUK_data/15DataForOECD-RawResponses_C.sav" %>%
+  read.spss(.,colNames=TRUE) %>%
+  as.data.frame(.)->UK16raw.data
+
+#2017-2018
+"Z:/4. Countries/United Kingdom/2017-2018 NFER/Data/golddataset.xlsx" %>%
+  read.xlsx(.,colNames=TRUE) %>%
+  as.data.frame(.)->UK18stugold.data
+
+#USA
+
+#2016
+"Z:/4. Countries/United States/2015- NWEA/Datasets/USA 2016.csv"
+#2017
+"Z:/4. Countries/United States/2015- NWEA/Datasets/Received 25-8-2017/school-scores/school-scores.2017-08-22.csv"
+
+#2018
+
+"Z:/4. Countries/United States/2018 NWEA/NWEArawdata/NWEA_PfS_cognitive_scored_20180509.xlsx"
+"Z:/4. Countries/United States/2018 NWEA/NWEArawdata/NWEA_PfS_school_scores_20180509.csv"
+
