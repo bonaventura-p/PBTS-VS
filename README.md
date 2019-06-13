@@ -6,3 +6,8 @@ https://BonaventuraFrancesco.PACILEO@algobank.oecd.org:4430/BonaventuraFrancesco
 
 **git cmd**
 \\em-sbx-fs-1\EM_Apps\PortableGit\git-cmd.exe
+
+
+**description**
+
+it should be enough to run the VS_shell.R in /src to get the results
