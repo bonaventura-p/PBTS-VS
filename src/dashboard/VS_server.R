@@ -1,231 +1,4 @@
 
-source('//main.oecd.org/ASgenEDU/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/VS_init.R')
-
-
-
-ui2 <-navbarPage("PISA-Based Test for Schools Validation Study",
-  
-  tabPanel("Control room",
-    selectInput("folder", h5("Choose a country:"), choices = c("Andorra")),        
-    HTML('</br>'),
-    checkboxInput("dodif", "Do DIF analysis", value = F), #and change choice of country with no default
-    HTML('</br>'),
-    radioButtons('format', h5('Document format'), c('PDF', 'HTML', 'Word'), inline = TRUE),
-    downloadButton('downloadReport'),
-    HTML('</br> </br>'),
-    HTML('<a href="http://www.oecd.org/pisa/aboutpisa/PfS_TechReport_CRC_final.pdf">PISA for Schools Technical Report</a> '),
-    HTML('<a href="http://www.oecd.org/pisa/data/2015-technical-report/">PISA 2015 Technical Report</a> ')
-  ),
-  
-
-     
-  
-    tabPanel("Summary of exploratory analysis",
-             HTML('<p> <b> Objectives </b> </br> The main purpose of the validation study
-of the PISA-Based Test for Schools assessment is to assess quality, reliability and 
-comparability of the assessment instruments translated into PLACE language to international
-assessment instruments in English. The validation study consists of items psychometric
-properties analyses in PLACE language and further international comparison of items
-characteristics. The decisions regarding item treatment for results generation and for
-possible future PfS implementation in PLACE can also be made. </br>
-This technical report provides the results of the national item analysis in PLACE
- with the purpose of validation of the assessment instrument in PLACE
- </p> </br>'),
-             HTML('<p> <b> Methodology </b> </br> The PLACE data was calibrated in order
-                  to determine whether the items function similarly to the international pilot. </br>
-                  A total of 140 items were analyzed: 46 reading items (43 dichotomously scored), 
-                  40 mathematics items (34 dichotomously scored) and 54 science (49 dichotomously scored). </br>
-                  The discrimination coefficient, the coefficient MNSQ (Infit), and the item parameter estimates have been computed. 
-                  The Differential item functioning (DIF) analysis has also been conducted in order to detect potential bias
-                  between girls and boys responses.</p> </br>'),
-             numericInput("sum", label = h5("Number of items to view"), 15),
-             HTML('</br> <b> Mathematics items:</b>'),
-             tableOutput('summary_math'),
-             HTML('</br> <b>Reading items </b>'),
-             tableOutput('summary_read'),
-             HTML('</br> <b>Science items </b>'),
-             tableOutput('summary_scie'),
-             #add DIF
-             textInput("text_model", label = "Conclusions", value = "Enter text...")
-    ),
-
-  
-  navbarMenu("Exploratory analysis",  
-  
-    tabPanel("Correlation with international score frequencies",
-             HTML('<p> <b> Correlation with international score frequencies </b> </br> The frequency of students scores distribution has been estimated
-for three response codes: 0 - incorrect; 1 - correct for dichotomy items or partially correct for partial credit items; 2 - totally correct for partial credit items. </p>  </br> <p>
-The correlation between score frequencies in PLACE and in the international pilot has been estimated. An high correlation among all response codes in all domains suggests that there are high similarities 
-of the response distributions between students in PLACE and in the international pilot. </p> </br>'),
-            sidebarLayout(
-              sidebarPanel(
-                selectInput("domain2", h5("Choose a domain:"), choices = c("math","read","scie")), 
-                width=2
-              ),
-              mainPanel(
-                plotOutput("plot2"),
-                width=10
-              )
-            ),
-            
-             HTML('</br> <b> Mathematics items </b>'),
-              tableOutput('table2_math'),
-               HTML('</br> <b> Reading items </b>'),
-               tableOutput('table2_read'),
-               HTML('</br> <b> Science items </b>'),
-               tableOutput('table2_scie')
-       ),
-    
-    tabPanel("Point-biserial correlation",
-             HTML("<b> Point-biserial correlation </b> </br>  <p>  The point-biserial correlation 
-is the correlation between a response category coded as a dummy variable
-(a score of 1 for students that responded with the correct code and a score of 0 for students 
-in other response categories) and the total domain score. For dichotomous items the point-biserial
-is equal to the adjusted correlation. Correct responses should have positive correlations 
-with the total score, incorrect responses negative correlations. </p> </br> <p> There are three criteria to take into consideration: </br>
-Criterion 1: Categories 0 must have a discrimination biserial-point index negative; </br> 
-Criterion 2: The discrimination biserial-point for a partial credit item must be ordered; </br> 
-                  Criterion 3: Discrimination of the correct answer must be greater than 0,2. </p> </br> </br>"),
-             numericInput("obs3", label = h5("Number of items to view"), 10),
-             HTML('</br> <b> Mathematics items </b>'),
-             tableOutput('table3_math'),
-             HTML('</br> <b> Reading items </b>'),
-             tableOutput('table3_read'),
-             HTML('</br> <b> Science items </b>'),
-             tableOutput('table3_scie')
-    ),
-    
-    tabPanel("IRT item difficulty",
-       HTML("<b> IRT item difficulty </b> </br> <p>  The national scaling provides nationally
-            specific item parameter estimates. If the test measured the same latent trait
-            per domain in all countries, then items should have the same relative difficulty. </p> </br> </br>"),      
-             sidebarLayout(
-               sidebarPanel(
-                 selectInput("domain4", h5("Choose a domain:"), choices = c("math","read","scie")), 
-                 width=2
-               ),
-               mainPanel(
-                 plotOutput("plot4"),
-                 width=10
-               )
-             ),
-             HTML('</br>'),
-       HTML("</br>  <p> If the difference is statistically significant, the item is flagged as dodgy. </p> </br>"),      
-             numericInput("obs4", label = h5("Number of items to view"), 10),
-             HTML('</br> <b> Mathematics items </b>'),
-             tableOutput('table4_math'),
-             HTML('</br> <b> Reading items </b>'),
-             tableOutput('table4_read'),
-             HTML('</br> <b> Science items </b>'),
-             tableOutput('table4_scie')   
-    ),
-    
-    tabPanel("Model fit (Infit)",
-             HTML("<b> Model fit (Infit) </b> </br>  <p> For each item parameter, the fit MNSQ (infit) index was 
-                  used to provide an indication of the compatibility of the model and the data. For each student,
-                  the model describes the probability of obtaining the different item scores. It is therefore 
-                  possible to compare the model prediction and what has been observed for one item across students.
-                  Accumulating comparisons across students gives an item-fit statistic.  </br> </br>
-                  A weighted MNSQ greater than one is associated with a low discrimination index, meaning the data 
-                  exhibits more variability than expected by the model. </br> </br>
-                  PISA for Schools accepts small variations of MNSQ around one, however, values larger than 1.2 indicate
-                  that the item discrimination is lower than assumed by the model, and values below 0.8 show that the item
-                  discrimination is higher than assumed </p> </br> </br> "),
-             numericInput("obs5", label = h5("Number of items to view"), 10),
-             HTML('</br> <b> Mathematics items </b>'),
-             tableOutput('table5_math'),
-             HTML('</br> <b> Reading items </b>'),
-             tableOutput('table5_read'),
-             HTML('</br> <b> Science items </b>'),
-             tableOutput('table5_scie')   
-    ),
-    
-     tabPanel("Gender DIF",
-              HTML("<b> Differential item functioning </b> </br>  <p>   The DIF analysis was performed using the multi-facet model
-                   of TAM (Wu et al., 2007) through the difference in parameters of item characteristic curves (ICCs) 
-                   of girls and boys groups. The DIF value for each item is computed as the difference between the two
-                   relative difficulty estimates (boys versus girls). An item is flagged as having substantial DIF if
-                   this difference is greater than 0.25  </p> </br> </br> "), 
-              sidebarLayout(
-                sidebarPanel(
-                  selectInput("domain6", h5("Choose a domain:"), choices = c("math","read","scie")), 
-                  width=2
-                ),
-                mainPanel(
-                  plotOutput("plot6"),
-                  width=10
-                )
-              ),
-              HTML('</br>'),
-              numericInput("obs6", label = h5("Number of items to view"), 10),
-              HTML('</br> <b> Mathematics items </b>'),
-              tableOutput('table6_math'),
-              HTML('</br> <b> Reading items </b>'),
-              tableOutput('table6_read'),
-              HTML('</br> <b> Science items </b>'),
-              tableOutput('table6_scie')   
-    ),
-  
-     tabPanel("Wright Map",
-              sidebarLayout(
-                sidebarPanel(
-                  selectInput("domain7", h5("Choose a domain:"), choices = c("math","read","scie")), 
-                  width=2
-                ),
-                mainPanel(
-                  HTML('<b> Wright Map </b> </br> <p>  Theoretically, when candidates and items are opposite each other on the map, the difficulty of the item 
-                        and the ability of the candidate are comparable, so the candidate has approximately a 50% probability
-                        of answering the item correctly. </p> </br>   </br>'),
-                  HTML('</br>'),
-                  plotOutput("plot7"),
-                  width=10
-                )
-              )
-      )
-  ),
-  
-  navbarMenu("Dodgy items review",
-             tabPanel("TCC/Cronbach")
-             
-  ),
-  
-  navbarMenu("Results preview",
-   
-  tabPanel("Primary analysis",
-           
-           HTML('<b> Primary analysis </b> </br> </br> </br>'),
-           
-           sidebarLayout(
-             sidebarPanel(
-               selectInput("domain8", h5("Choose a domain:"), choices = c("math","read","scie")), 
-               width=2
-             ),
-             mainPanel(
-               plotOutput("plot8"),
-               width=10
-             )
-           ),
-           HTML('</br>  </br>'),
-           HTML('<b> Dodgy items </b> </br> </br> </br>'),
-           uiOutput('killitem.ui')
-           
-  )
-  
-), 
-    
-navbarMenu("More",
- tabPanel("Sub-Component A"),
- tabPanel("Sub-Component B"))
-) 
-    
-  
-
-
-
-
-
-
-
 ########################
 ########## SERVER ###############
 ###########################
@@ -238,7 +11,7 @@ server2 <- function(input,output){
   
   
   # download report
-  output$downloadReport <- downloadHandler(
+  output$downloadReport <- shiny::downloadHandler(
     filename = function() {
       paste('my-report', sep = '.', switch(
         input$format, PDF = 'pdf', HTML = 'html', Word = 'docx'
@@ -251,11 +24,11 @@ server2 <- function(input,output){
       on.exit(setwd(owd))
       file.copy(src, 'report.Rmd')
       
-      out <- render('report.Rmd', switch(
+      out <- markdown::render('report.Rmd', switch(
         input$format,
-        PDF = pdf_document(), HTML = html_document(), Word = word_document()
+        PDF = markdown::pdf_document(), HTML = markdown::html_document(), Word = markdown::word_document()
       ))
-      file.rename(out, file)
+      file.rename(out, filename) #changed from file to filename
     })
 
   #################
@@ -264,24 +37,24 @@ server2 <- function(input,output){
 
 
   # load national data sets
-  folderInput <- reactive({
+  folderInput <- shiny::reactive({
     switch(input$folder,
            "Andorra" = "V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Andorra/")
   })
 
-  score.data <- reactive({
+  score.data <- shiny::reactive({
     read.table( paste0(folderInput(), "score.data.txt"), header=T, sep="\t")
   }) 
 
-  gold.data <- reactive({
+  gold.data <- shiny::reactive({
     read.table( paste0(folderInput(), "gold.data.txt"), header=T, sep="\t")
   })   
   
-  raw.data <- reactive({
+  raw.data <- shiny::reactive({
     read.table( paste0(folderInput(), "raw.data.txt"), header=T, sep="\t")
   })   
   
-  pca.data <- reactive({
+  pca.data <- shiny::reactive({
     read.table( paste0(folderInput(), "pca.data.txt"), header=T, sep="\t")
   })   
   
@@ -292,12 +65,12 @@ server2 <- function(input,output){
   domains<-c("math","read","scie") 
   
   #Validation study analysis
-  results<-reactive({
+  results<-shiny::reactive({
     VSscaleloop(domains=domains, resp=score.data(), dodif=input$dodif, gender.data=gold.data(), gender.name="ST004Q01_15")
   })
   
   #Primary analysis
-  primary<-reactive({
+  primary<-shiny::reactive({
     PFSscaleloop(domains=domains, resp = score.data(), stu.data = gold.data(), 
                  raw.data = raw.data(), pca.data = pca.data(),kill.item=input$kill)
   })
@@ -313,27 +86,27 @@ server2 <- function(input,output){
      #Table 2. Correlation between score frequencies 0,1,2 pilot 
      intl.freq <- IntlFreq(domn)
 
-      corr.output<- reactive({ 
+      corr.output<- shiny::reactive({ 
          results()[[domn]]["ctt.output"] %>% 
         as.data.frame(.) %>%  
         Correl(ctt.data=.,intl.ctt = intl.freq)
         })
      
-     output[[paste('table2',domn,sep ="_")]] <- renderTable({
+     output[[paste('table2',domn,sep ="_")]] <- shiny::renderTable({
        
        corr.output() %>% 
          dplyr::rename(., "Item category"=item.freq, Correlation=corr.value) 
        })  
   
   #Table 3 Dodgy items based on biserial-point values 
-      ptbis.output<- reactive({ 
+      ptbis.output<- shiny::reactive({ 
         results()[[domn]]["ctt.output"] %>% 
           as.data.frame(.) %>%
           PtBis(ctt.data = .) 
       })
     
   
-      output[[paste('table3',domn,sep ="_")]]<-renderTable({
+      output[[paste('table3',domn,sep ="_")]]<-shiny::renderTable({
         
         ptbis.output() %>%
           dplyr::filter(.,!(crit.one ==0 & crit.two==0 & crit.three == 0))  %>%
@@ -350,14 +123,14 @@ server2 <- function(input,output){
       # Table 4. Dodgy items based on difficulty differences
       intl.diff <- IntlDiff(domn)
       
-      diff.output<- reactive({ 
+      diff.output<- shiny::reactive({ 
         results()[[domn]]["tam.output"] %>% 
         as.data.frame(.) %>%
         DiffItem(tam.mod = .,intl.tam = intl.diff) 
       })
       
       
-      output[[paste('table4',domn,sep ="_")]]<-renderTable({
+      output[[paste('table4',domn,sep ="_")]]<-shiny::renderTable({
         
         diff.output() %>%
           dplyr::filter(.,!(zdif==0)) %>%
@@ -367,13 +140,13 @@ server2 <- function(input,output){
       })
       
       #Table 5. Dodgy items based on coefficient MNSQ
-      fit.output<- reactive({ 
+      fit.output<- shiny::reactive({ 
         results()[[domn]]["fit.output"] %>%
           as.data.frame(.) %>%  
           Infit(tam.fit = .)
       })
       
-      output[[paste('table5',domn,sep ="_")]]<-renderTable({ 
+      output[[paste('table5',domn,sep ="_")]]<-shiny::renderTable({ 
   
       fit.output() %>%  
           dplyr::filter(., !(w.mnsq==0)) %>%
@@ -382,13 +155,13 @@ server2 <- function(input,output){
       })
   
     #Table 6. Dodgy items based on DIF criterion
-      dif.output<- reactive({ 
+      dif.output<- shiny::reactive({ 
         results()[[domn]]["dif.output"] %>% 
           as.data.frame(.) %>%
           DIFitem(DIF.mod = .)
         })
       
-      output[[paste('table6',domn,sep ="_")]]<-renderTable({ 
+      output[[paste('table6',domn,sep ="_")]]<-shiny::renderTable({ 
         
       dif.output() %>% 
           dplyr::filter(., !(gdif==0)) %>%
@@ -399,7 +172,7 @@ server2 <- function(input,output){
     
   
   #Table summary
-      summary.input <- reactive({  
+      summary.input <- shiny::reactive({  
         
         if ( !(input$dodif) ) {
           diff.output() %>%
@@ -421,7 +194,7 @@ server2 <- function(input,output){
       })
 
 
-    output[[paste('summary',domn,sep ="_")]] <- renderTable({
+    output[[paste('summary',domn,sep ="_")]] <- shiny::renderTable({
       
       
       if ( !(input$dodif)) {
@@ -482,17 +255,17 @@ server2 <- function(input,output){
   
 
     # Figure 2: CTT Difficulty comparison
-  intlfig.freq <- reactive({
+  intlfig.freq <- shiny::reactive({
     IntlFreq(input$domain2)
   })
   
-  corrfig.output<- reactive({ 
+  corrfig.output<- shiny::reactive({ 
     results()[[input$domain2]]["ctt.output"] %>% 
       as.data.frame(.) %>%  
       CorrFig(ctt.data=.,intl.ctt = intlfig.freq())
   })
   
-  output$plot2 <- renderPlot({
+  output$plot2 <- shiny::renderPlot({
     
     corrfig.output() %>% 
       ggplot(., aes(x=`1.x`, y=`1.y`,label=.$item)) +
@@ -514,17 +287,17 @@ server2 <- function(input,output){
   
   
   #Figure 4: IRT Difficulty comparison
-  intlfig.diff <-reactive({
+  intlfig.diff <-shiny::reactive({
     IntlDiff(input$domain4)
   }) 
   
-  diff.fig.output<- reactive({ 
+  diff.fig.output<- shiny::reactive({ 
     results()[[input$domain4]]["tam.output"] %>% 
       as.data.frame(.) %>%
       DiffItem(tam.mod = .,intl.tam = intlfig.diff()) 
   })
 
-  output$plot4 <- renderPlot({
+  output$plot4 <- shiny::renderPlot({
     
     diff.fig.output() %>%
       dplyr::mutate(.,z2dif=ifelse(zdif==0,0,1)) %>%
@@ -563,18 +336,18 @@ server2 <- function(input,output){
             plot.subtitle=element_text(face="italic")) -> DiffDensity
     
     #plots together
-    grid.arrange( DiffPlot , DiffDensity,   ncol=2, nrow=1,widths = c(1, 0.6))
+    gridExtra::grid.arrange( DiffPlot , DiffDensity,   ncol=2, nrow=1,widths = c(1, 0.6))
   })
   
   
   #Figure 6: Gender DIF
-  dif.fig.output<- reactive({ 
+  dif.fig.output<- shiny::reactive({ 
     results()[[input$domain6]]["dif.output"] %>% 
       as.data.frame(.) %>%
       DIFitem(DIF.mod = .)
   })
 
-    output$plot6 <-renderPlot({
+    output$plot6 <-shiny::renderPlot({
       
       dif.fig.output() %>%
         tidyr::gather(., key=gender, value=dif.value, `1`:`2`, factor_key=TRUE) %>%
@@ -596,21 +369,21 @@ server2 <- function(input,output){
     
 # Figure 7: Wright Map
   
-  fig.wright.nested<-reactive({
+  fig.wright.nested<-shiny::reactive({
     results()[[input$domain7]]["wright.output"]
   })
   
-  fig.wright<-reactive({
+  fig.wright<-shiny::reactive({
     fig.wright.nested()[["wright.output"]] %>%
       WrightmapElms(.)
   })
     
-    output$table8<-renderTable({
+    output$table8<-shiny::renderTable({
       fig.wright() %>%
         head(.)
     })
     
-    output$plot7 <-renderPlot({
+    output$plot7 <-shiny::renderPlot({
 
       fig.wright()[[2]] %>%
         ggplot(., aes(x = theta)) +
@@ -638,12 +411,12 @@ server2 <- function(input,output){
         ylab("Item difficulty")-> beta.plot
       
       #plot_grid(theta.density, beta.plot)
-      grid.arrange( theta.density , beta.plot,   ncol=2, nrow=1,widths = c(1, 1),top="Wright Map")
+      gridExtra::grid.arrange( theta.density , beta.plot,   ncol=2, nrow=1,widths = c(1, 1),top="Wright Map")
 
     })
  
       #Figure 8 primary analysis 
-    kill.item<-reactive({
+    kill.item<-shiny::reactive({
       if(input$domain8=="math") {
         score.data() %>%
           dplyr::select(., dplyr::matches("^PM")) %>%
@@ -660,21 +433,21 @@ server2 <- function(input,output){
     
     })
     
-    output$killitem.ui<-renderUI({
-      checkboxGroupInput("kill", "Tick to delete the item:", inline=TRUE,
+    output$killitem.ui<-shiny::renderUI({
+      shiny::checkboxGroupInput("kill", "Tick to delete the item:", inline=TRUE,
                          choices = kill.item())
     })
     
 
     
-      primary.output<- reactive({ 
+      primary.output<- shiny::reactive({ 
         primary()[[input$domain8]] %>% 
           as.data.frame(.) %>%
           intsvy::pisa.mean.pv(pvlabel=toupper(input$domain8), by = "stidsch",data =.) 
       })
       
       
-      output$plot8<- renderPlot({
+      output$plot8<- shiny::renderPlot({
         
         primary.output() %>% 
           ggplot(., aes(y = Mean, x = stidsch),fill=variable) + 
@@ -696,7 +469,7 @@ server2 <- function(input,output){
 
 }
 
-shinyApp(ui = ui2, server = server2)
+
 
 
 
