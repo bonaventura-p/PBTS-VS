@@ -10,4 +10,8 @@ https://BonaventuraFrancesco.PACILEO@algobank.oecd.org:4430/BonaventuraFrancesco
 
 **description**
 
-it should be enough to run the VS_shell.R in /src to get the results
+it should be enough to run the VS_shell.R in /src to get the results, provided that all the necessary R packages are installed (do not need to load them)
+
+**information architecture**
+
+![](./images/infoarch.png)
