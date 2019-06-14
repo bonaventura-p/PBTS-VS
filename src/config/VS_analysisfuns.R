@@ -242,7 +242,7 @@ VSDIFscale <- function(domn, resp, gender.data, gender.name) {
   #       resp=scored data
   #       gender.data= data frame with gender variable
   #       gender.name= variable name for gender
-  # Returns: DIF parameter estimates (i.e. interaction term)
+  # Returns: DIF parameter estimates + interaction term
   
   # subset scored data
   resp %>%
@@ -263,10 +263,19 @@ VSDIFscale <- function(domn, resp, gender.data, gender.name) {
   facets <- as.data.frame(gender)
   
   score.input %>%
-    TAM::tam.mml.mfr( ., facets= facets , formulaA = formulaA, control=list(maxiter = 500) ) ->dif.data
+    TAM::tam.mml.mfr( ., facets= facets , formulaA = formulaA, control=list(maxiter = 250) ) ->dif.data
+  
+  
+  dif.data[[2]] %>%
+    as.data.frame(.) %>%
+    dplyr::filter(., .$facet %in% "item:gender") %>%
+    dplyr::mutate(., parameter = paste(substr(parameter,1,9), substr(parameter,11,18), sep="-")) %>%
+    dplyr::rename(., item=parameter, intxsi.item=xsi) %>%
+    dplyr::select(., item, intxsi.item)->inter.output
   
   dif.data[[5]] %>%
-    as.data.frame(.) -> dif.output
+    as.data.frame(.) %>%
+    dplyr::full_join(., inter.output, by="item") -> dif.output
   
   dif.output %>%
     return(.)

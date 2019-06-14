@@ -166,7 +166,7 @@ server <- function(input,output){
       dif.output() %>% 
           dplyr::filter(., !(gdif==0)) %>%
           dplyr::select(.,-gdif) %>%
-          dplyr::rename(., Girls = `1`, Boys = `2`) %>%
+          dplyr::rename(., Girls = `1_dif.output.xsi.item`, Boys = `2_dif.output.xsi.item`) %>%
        head(., n=input$obs6)
       })
     
@@ -184,7 +184,7 @@ server <- function(input,output){
         } else if (input$dodif) {
            diff.output() %>%
             dplyr::full_join(.,fit.output(),by="item")%>%
-            dplyr::select(.,matches("item|zdif|w.mnsq")) %>%
+            dplyr::select(.,dplyr::matches("item|zdif|w.mnsq")) %>%
             dplyr::mutate(.,irtdif=substr(item,11,14),item=substr(item,1,9)) %>%
              spread_n(.,key = irtdif, value =c("zdif","w.mnsq")) %>%
             dplyr::full_join(.,ptbis.output(),by="item") %>%
@@ -350,12 +350,12 @@ server <- function(input,output){
     output$plot6 <-shiny::renderPlot({
       
       dif.fig.output() %>%
-        tidyr::gather(., key=gender, value=dif.value, `1`:`2`, factor_key=TRUE) %>%
+        tidyr::gather(., key=gender, value=dif.value, `1_dif.output.xsi.item`:`2_dif.output.xsi.item`, factor_key=TRUE) %>%
         ggplot(., aes(x=item, y=dif.value, group=gender)) +
         geom_line(aes(color = gender))+
         geom_point(aes(color = gender,shape=ifelse(gdif==0,1,16)),size=3)+
         labs(y="IRT difficulty (beta parameter)", title ="Gender DIF",
-             subtitle = "IRT difficulty estimates for boys and girls (significant values with filled dot)")+
+             subtitle = "IRT difficulty estimates for boys and girls (significant differences are shown as filled dots)")+
         scale_color_pbts(palette="GnBe", labels=c("Girls", "Boys"))+
         scale_shape_identity()+
         theme_gray()+

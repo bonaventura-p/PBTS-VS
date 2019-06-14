@@ -1,0 +1,15 @@
+
+#DIF gender
+formulaA <- ~item+item:step+item*gender
+
+#gender variable as values
+gender<-gender.data[,gender.name] #1 female, 2 male
+
+#Set up facet variable
+facets <- as.data.frame(gender)
+
+score.input %>%
+  TAM::tam.mml.mfr( ., facets= facets , formulaA = formulaA, control=list(maxiter = 500) ) ->dif.data
+
+dif.data[[5]] %>%
+  as.data.frame(.) -> dif.output

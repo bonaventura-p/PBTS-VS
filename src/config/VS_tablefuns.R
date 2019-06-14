@@ -127,13 +127,13 @@ Infit<- function(tam.fit) {
 DIFitem<-function(DIF.mod) {
   
   #DIF.length <- dim(DIF.mod)
-  
   DIF.mod %>%  
-    dplyr::select(., dif.output.item, dif.output.xsi.item) %>%
+    dplyr::select(., dif.output.item, dif.output.xsi.item, dif.output.intxsi.item) %>%
     dplyr::mutate(., gender=substr(dif.output.item,17,18),dif.output.item=substr(dif.output.item,1,9)) %>%
-    tidyr::spread(., key = gender, value = dif.output.xsi.item) %>%
-    dplyr::mutate(., gdif = dplyr::if_else(`2` - `1` > 0.25, 1, dplyr::if_else(`2` - `1` < -0.25, -1, 0))) %>%
-    dplyr::rename(., item = dif.output.item) -> table6.output #difference as boys-girls
+    spread_n(., key = gender, value = c(dif.output.xsi.item,dif.output.intxsi.item)) %>%
+    dplyr::mutate(., gdif = dplyr::if_else(`2_dif.output.intxsi.item` > 0.25, 1, dplyr::if_else(`2_dif.output.intxsi.item` < -0.25, -1, 0))) %>%
+    dplyr::rename(., item = dif.output.item) %>%
+    dplyr::select(., item, `1_dif.output.xsi.item`, `2_dif.output.xsi.item`, gdif)-> table6.output #difference as boys-girls
   
   table6.output %>%
     return(.)

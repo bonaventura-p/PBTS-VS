@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1560523784119.000,
+    "dirty" : true,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "4A020A2E",
+    "lastKnownWriteTime" : 1555666838,
+    "last_content_update" : 1560527062028,
+    "path" : "V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS_scaling.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "7,0",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 7,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
