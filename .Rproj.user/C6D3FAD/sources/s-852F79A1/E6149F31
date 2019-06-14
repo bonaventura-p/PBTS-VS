@@ -5,15 +5,17 @@
     "dirty" : false,
     "encoding" : "UTF-8",
     "folds" : "",
-    "hash" : "244196346",
+    "hash" : "0",
     "id" : "E6149F31",
-    "lastKnownWriteTime" : 1560447886,
-    "last_content_update" : 1560447886,
+    "lastKnownWriteTime" : 1560518205,
+    "last_content_update" : 1560518205435,
     "path" : "V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/src/config/VS_tablefuns.R",
     "project_path" : "src/config/VS_tablefuns.R",
     "properties" : {
+        "cursorPosition" : "12,43",
+        "scrollLine" : "0"
     },
-    "relative_order" : 6,
+    "relative_order" : 4,
     "source_on_save" : false,
     "source_window" : "",
     "type" : "r_source"

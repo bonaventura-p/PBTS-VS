@@ -1,9 +1,16 @@
-
+# VS_analysisfuns.R
+# Bonaventura Pacileo
+# This program defines the functions that perform all the analysis
 
 ######################
-## scaling functions###
-#please add documentation
+## WrightMap.sim.PV##
+##########################
 WrightMap.sim.PV <- function( object, ndim ){
+  # WrightMap.sim.PV creates a data.frame with PV person estimates from a distribution of mean equal to EAP
+  # Args: object= TAM object with "resp","nitems","maxK","AXsi","xsi","A","B","ndim","person" 
+  #  ndim = 1 for 1PL
+  #  Returns: a dataframe with PV person estimates
+  
   person <- object$person
   N <- nrow(person)
   if (ndim==1){
@@ -19,6 +26,9 @@ WrightMap.sim.PV <- function( object, ndim ){
   return(pers.est)
 }
 
+######################
+## AnchorValues ##
+##########################
 
 AnchorValues<-function(domn,score.data, item.data) {
   # Anchor Values creates a data.frame with item position and parameter of the correct size given domn/country
@@ -44,6 +54,9 @@ AnchorValues<-function(domn,score.data, item.data) {
   
 }
 
+######################
+## PcaComp ##
+##########################
 PcaComp  <-  function(pca.data,pctvar=0.95) {
   # PcaComp computes PCA components for a given input file and stores pctvar% components
   # Args: pca.data= data frame with the input variables, in case of PFS all dummified stud items+age
@@ -61,6 +74,9 @@ PcaComp  <-  function(pca.data,pctvar=0.95) {
     return(.)
 }
 
+######################
+## DirectRegs ##
+##########################
 DirectRegs <- function(stu.data, raw.data) {
   # DirectRegs creates a dataset for the direct regressors of the IRT model
   # Args: stu.data=student questionnaire data, e.g. gold_data
@@ -122,6 +138,9 @@ DirectRegs <- function(stu.data, raw.data) {
     return(.)
 }
 
+######################
+## PFSscale ##
+##########################
 PFSscale <-function(domn, resp, Y, xsi.fixed, aux) {
   # PFS scale computes plausible values for given domain using PBTS model 
   # and merges aux variables(weights etc) for secondary analysis
@@ -158,12 +177,14 @@ PFSscale <-function(domn, resp, Y, xsi.fixed, aux) {
 } 
 
 
-# general analysis
+######################
+## VSscale ##
+##########################
 VSscale <-function(domn, resp) {
-  # PFS scale computes pl
+  # VSscale computes xsi, fit, wright,  pv and pt bis correlation  returns them as a list 
   # Args: domn=PISA domain
-  #       
-  # Returns: dataframe with s
+  #       resp=scored data
+  # Returns: list with xsi estimates, fit, wright,  pv and pt bis correlation 
   
   # subset scored data
   resp %>%
@@ -212,8 +233,16 @@ VSscale <-function(domn, resp) {
   
 } 
 
-
+######################
+## VSDIFscale ##
+##########################
 VSDIFscale <- function(domn, resp, gender.data, gender.name) {
+  # VSDIFscale computes gender DIF
+  # Args: domn=PISA domain
+  #       resp=scored data
+  #       gender.data= data frame with gender variable
+  #       gender.name= variable name for gender
+  # Returns: DIF parameter estimates (i.e. interaction term)
   
   # subset scored data
   resp %>%

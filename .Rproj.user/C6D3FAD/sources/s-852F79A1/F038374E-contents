@@ -84,7 +84,7 @@ server <- function(input,output){
   
      
      #Table 2. Correlation between score frequencies 0,1,2 pilot 
-     intl.freq <- IntlFreq(domn)
+     intl.freq <- IntlPars(domn,"freq")
 
       corr.output<- shiny::reactive({ 
          results()[[domn]]["ctt.output"] %>% 
@@ -121,7 +121,7 @@ server <- function(input,output){
   
   
       # Table 4. Dodgy items based on difficulty differences
-      intl.diff <- IntlDiff(domn)
+      intl.diff <- IntlPars(domn,"diff")
       
       diff.output<- shiny::reactive({ 
         results()[[domn]]["tam.output"] %>% 
@@ -256,7 +256,7 @@ server <- function(input,output){
 
     # Figure 2: CTT Difficulty comparison
   intlfig.freq <- shiny::reactive({
-    IntlFreq(input$domain2)
+    IntlPars(input$domain2,"freq")
   })
   
   corrfig.output<- shiny::reactive({ 
@@ -288,7 +288,7 @@ server <- function(input,output){
   
   #Figure 4: IRT Difficulty comparison
   intlfig.diff <-shiny::reactive({
-    IntlDiff(input$domain4)
+    IntlPars(input$domain4,"diff")
   }) 
   
   diff.fig.output<- shiny::reactive({ 

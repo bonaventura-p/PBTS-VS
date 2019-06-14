@@ -140,7 +140,7 @@ DIFitem<-function(DIF.mod) {
 }
 
 ############################
-#wright map
+#Figure 7 wright map
 ############################
 
 #"resp","nitems","maxK","AXsi","xsi","A","B","ndim","person"

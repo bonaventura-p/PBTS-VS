@@ -11,7 +11,7 @@ wd<-getwd() #'//main.oecd.org/ASgenEDU/PISA/BACKUP/PISA/PISA for Schools/11. Ite
 
 
 #libraries
-library("magrittr")  
+library("magrittr")  #define pipes in config and remove it 
 library("ggrepel") #loads ggplot2  
 library("RColorBrewer") 
 library("scales") 
@@ -25,3 +25,7 @@ source('src/dashboard/VS_ui.R')
 source('src/dashboard/VS_server.R')
 
 shiny::shinyApp(ui = ui, server = server)
+
+
+
+
