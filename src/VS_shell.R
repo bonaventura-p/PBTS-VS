@@ -11,7 +11,7 @@ wd<-getwd() #'//main.oecd.org/ASgenEDU/PISA/BACKUP/PISA/PISA for Schools/11. Ite
 
 
 #libraries
-library("magrittr")  #define pipes in config and remove it 
+library("magrittr")
 library("ggrepel") #loads ggplot2  
 library("RColorBrewer") 
 library("scales") 

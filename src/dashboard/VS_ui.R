@@ -141,9 +141,8 @@ ui <-shiny::navbarPage("PISA-Based Test for Schools Validation Study",
                                   shiny::tabPanel("Gender DIF",
                                   shiny::HTML("<b> Differential item functioning </b> </br>  <p>   The DIF analysis was performed using the multi-facet model
                                           of TAM (Wu et al., 2007) through the difference in parameters of item characteristic curves (ICCs) 
-                                          of girls and boys groups. The DIF value for each item is computed as the difference between the two
-                                          relative difficulty estimates (boys versus girls). An item is flagged as having substantial DIF if
-                                          this difference is greater than 0.25  </p> </br> </br> "), 
+                                          of girls and boys groups. The figure below shows the difficulty estimates for the two groups (boys versus girls). 
+                                          An item is flagged as having substantial DIF if the interaction term (item:gender) is greater than 0.25 in absolute terms.  </p> </br> </br> "), 
                                   shiny::sidebarLayout(
                                     shiny::sidebarPanel(
                                       shiny::selectInput("domain6", shiny::h5("Choose a domain:"), choices = c("math","read","scie")), 
