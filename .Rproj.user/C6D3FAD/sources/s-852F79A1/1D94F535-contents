@@ -21,11 +21,14 @@ source(paste(wd,'src/config', 'VS_techfuns.R', sep="/"))
 source(paste(wd,'src/config', 'VS_tablefuns.R', sep="/"))
 source(paste(wd,'src/config', 'VS_analysisfuns.R', sep="/"))
 
-source('src/dashboard/VS_ui.R')
-source('src/dashboard/VS_server.R')
+source(paste(wd,'src/dashboard', 'VS_ui.R',sep="/"))
+source(paste(wd,'src/dashboard', 'VS_server.R',sep="/"))
 
 shiny::shinyApp(ui = ui, server = server)-> VSshiny
 
 VSshiny
+
+
+
 
 

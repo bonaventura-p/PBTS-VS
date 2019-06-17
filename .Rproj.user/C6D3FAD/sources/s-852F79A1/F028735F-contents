@@ -30,25 +30,31 @@ WrightMap.sim.PV <- function( object, ndim ){
 ## AnchorValues ##
 ##########################
 
-AnchorValues<-function(domn,score.data, item.data) {
-  # Anchor Values creates a data.frame with item position and parameter of the correct size given domn/country
-  # Args: domn=domain in "read","math","scie" 
-  #   score.data =scored dataset, 
-  #   item.data= tam parameters file, names item.name and tam.value
-  #  Returns: a dataframe with item position and item parameter
+AnchorValues<-function(domn,score.data, item.data, irtpar) {
+  # Anchor Values creates a data.frame with item parameters for 1PL and 2PL with the correct size given domn/country
+  # Args: domn = domain in "read","math","scie" 
+  # score.data = scored dataset, 
+  #  item.data = tam parameters file, names item.name and tam.value
+  #   irtpar = diff or slope
+  #  Returns: a dataframe with item position (number) and item parameters (depends if 1PL/2PL)
   
+  if(irtpar == "diff") {
+    item.list <- c("id","tam.value")
+  } else if (irtpar == "slope") {
+    item.list <- c("Cat0","Cat1", "Cat2")
+  }
+                              
   
   item.data %>%
-    dplyr::mutate(.,item.code = stringr::str_extract(string = item.name,
+    dplyr::mutate(.,item.code = stringr::str_extract(string = item,
                                                pattern =  ifelse(domn == "math", "^PM\\d{4}Q\\d{2}[A-Z]*", 
-                                                          ifelse(domn=="scie","^PS\\d{4}Q\\d{2}[A-Z]*",
-                                                          ifelse(domn=="read","^PR\\d{4}Q\\d{2}[A-Z]*",""))))) %>%
+                                                          ifelse(domn == "scie", "^PS\\d{4}Q\\d{2}[A-Z]*",
+                                                          ifelse(domn == "read", "^PR\\d{4}Q\\d{2}[A-Z]*", ""))))) %>%
     dplyr::mutate(., id = match(item.code, names(score.data))) %>%
     dplyr::arrange(., id) %>%
     dplyr::filter(., !(is.na(id))) %>%
-    dplyr::mutate(., id = 1:nrow(.)) %>% 
-    dplyr::rename(., tam=tam.value) %>%
-    dplyr::select(., id, tam) %>%
+    dplyr::mutate(., id =1:nrow(.)) %>% 
+    dplyr::select(., item.list) %>%
     return(.)
   
   
@@ -76,7 +82,7 @@ PcaComp  <-  function(pca.data,pctvar=0.95) {
 
 ######################
 ## DirectRegs ##
-##########################
+######################
 DirectRegs <- function(stu.data, raw.data) {
   # DirectRegs creates a dataset for the direct regressors of the IRT model
   # Args: stu.data=student questionnaire data, e.g. gold_data
@@ -141,26 +147,27 @@ DirectRegs <- function(stu.data, raw.data) {
 ######################
 ## PFSscale ##
 ##########################
-PFSscale <-function(domn, resp, Y, xsi.fixed, aux) {
+PFSscale <-function(domn, resp, Y, xsi.fixed, B, aux) {
   # PFS scale computes plausible values for given domain using PBTS model 
   # and merges aux variables(weights etc) for secondary analysis
   # Args: domn=PISA domain
   #       resp=scored data
-  #       Y= direct regressors
-  #       xsi.fixed= item parameters
-  #       aux= auxiliary variables DataFrame
+  #          Y= direct regressors
+  #  xsi.fixed= item difficulty parameters
+  #         B = fixed item slope parameters
+  #        aux= auxiliary variables DataFrame
   # Returns: dataframe with pv for domain and aux variables
   
   # domn must be a string e.g. domn<-"read"
 
   set.seed(1992)
   
-  # marginal model for 1PL
+  # marginal model for 2PL
   resp %>%
     dplyr::select(.,dplyr::matches(ifelse(domn=="read","^PR\\d{4}Q\\d{2}.?$",
                             ifelse(domn=="math","^PM\\d{4}Q\\d{2}.?$",
                                    ifelse(domn=="scie","^PS\\d{4}Q\\d{2}.?$",""))))) %>%
-    TAM::tam(., xsi.fixed = xsi.fixed, Y = Y, pid=NULL) -> marginal.model
+    TAM::tam.mml(., xsi.fixed = xsi.fixed, B = B, irtmodel = "2PL", Y = Y, pid=NULL, control=list(maxiter = 500)) -> marginal.model
 
   # computing plausible values
   plausible.values <- TAM::tam.pv(marginal.model, nplausible = 5)
@@ -194,18 +201,43 @@ VSscale <-function(domn, resp) {
                                                  "^PM\\d{4}Q\\d{2}[A-Z]*",
                                                  ifelse(domn=="scie","^PS\\d{4}Q\\d{2}[A-Z]*",
                                                         ""))))) -> score.input
-  # 1PL TAM model
+  
+  #getting international parameters (for now slopes Are all fixed to 1)
+  IntlPars(domn,"diff") %>%
+    AnchorValues(domn=domn, score.data = resp, item.data = ., irtpar = "diff") %>%
+    data.matrix(.) -> xsi.fixed
+  
+  IntlPars(domn,"slope") %>%
+    AnchorValues(domn=domn, score.data = resp, item.data = ., irtpar = "slope") %>%
+    data.matrix(.) -> B
+  
+  #dim input for tam.mml
+  dim(B)[3] <- 1
+  
+  
+  # 2PL TAM model with free difficulty parameters and fixed slopes = 1PL model
   score.input %>%
-    TAM::tam(.) -> tam.input
+    TAM::tam.mml(., B = B, irtmodel="2PL", control=list(maxiter = 500)) -> tam.input
+  
+  #2PL TAM with difficulty and slopes fixed to international pilot
+  score.input %>%
+    TAM::tam.mml(., xsi.fixed=xsi.fixed, B = B, irtmodel="2PL", control=list(maxiter = 500)) -> tamintl.input
   
   #wright map
-  wright<-c("resp","nitems","maxK","AXsi","xsi","A","B","ndim","person")
-  tam.input[wright] -> wright.output
+  c("resp","nitems","maxK","AXsi","xsi","A","B","ndim","person") %>% 
+    tam.input[.] -> wright.output
   
   
   #compute sig. diff stat
   data.frame(item = rownames(tam.input$xsi), 
-             tam.value = tam.input$xsi$xsi) -> tam.output
+             tam.value = tam.input$xsi$xsi) -> diff.output
+  
+  #extract item slopes
+  # data.frame(item = rownames(tam.input$B),tam.input$B) %>%
+  #   tidyr::gather(.,key=Cat,value=tam.value,Cat0:Cat2) %>%
+  #   dplyr::mutate(.,item=paste(item,substr(Cat,1,4),sep="_")) %>%
+  #   dplyr::arrange(., item) %>%
+  #   dplyr::select(.,-Cat) -> slope.output
   
   # plausible values 
   tam.input %>% 
@@ -215,18 +247,22 @@ VSscale <-function(domn, resp) {
   score.input %>% 
     TAM::tam.ctt(., pvscores = pv.input$pv,  group=NULL , progress=TRUE) -> ctt.output
   
+
   #MNSQ/INFIT
-  tam.input %>%
-    TAM::tam.fit(.)->fit.data
+  # model with international parameters
+  # For Infit the d.f. is the sum of the information in the observations = 1 / item or person logit S.E.**2. 
+  # Their likelihood (significance) is then computed. This could be done directly from chi-square tables, 
+  # but the convention is to report them as unit normal deviates (i.e., t-statistics corrected for their 
+  #   degrees for freedom). They are z-statistics, but the Rasch literature calls them t-statistics.
+  tamintl.input %>%
+    TAM::tam.fit(.) -> fit.data
   
   fit.data[[1]] %>% as.data.frame(.) -> fit.output
   
   
-  
-  
   # final wrap-up creates list
-  list("tam.output" = tam.output, "ctt.output" = ctt.output,
-       "fit.output"= fit.output,  "wright.output" = wright.output) -> VSoutput 
+  list("tam.output" = diff.output, "ctt.output" = ctt.output, 
+       "fit.output"= fit.output, "wright.output" = wright.output) -> VSoutput 
   
   VSoutput %>% 
     return(.)
@@ -263,7 +299,7 @@ VSDIFscale <- function(domn, resp, gender.data, gender.name) {
   facets <- as.data.frame(gender)
   
   score.input %>%
-    TAM::tam.mml.mfr( ., facets= facets , formulaA = formulaA, control=list(maxiter = 250) ) ->dif.data
+    TAM::tam.mml.mfr( ., facets= facets , formulaA = formulaA, irtmodel="2PL", control=list(maxiter = 250) ) ->dif.data
   
   
   dif.data[[2]] %>%

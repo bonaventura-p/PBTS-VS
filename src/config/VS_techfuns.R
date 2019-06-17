@@ -85,12 +85,20 @@ PFSscaleloop<-function(domains,resp,stu.data,raw.data,pca.data,kill.item) {
   for(domn in domains) {
     
     # get item parameters
-    intl.tam <- IntlDiff(domn) %>% dplyr::rename(., item.name=item)
+    #getting international parameters (for now slopes Are all fixed to 1)
+    IntlPars(domn,"diff") %>%
+      AnchorValues(domn=domn, score.data = resp, item.data = ., irtpar = "diff") %>%
+      data.matrix(.) -> xsi.fixed
     
-    xsi.fixed <- AnchorValues(domn=domn, score.data=resp, item.data=intl.tam) 
+    IntlPars(domn,"slope") %>%
+      AnchorValues(domn=domn, score.data = resp, item.data = ., irtpar = "slope") %>%
+      data.matrix(.) -> B
+    
+    #dim input for tam.mml
+    dim(B)[3] <- 1
     
     # do scaling
-    res <- PFSscale(domn=domn, resp=resp, Y=direct.regs, xsi.fixed=xsi.fixed, aux=aux) 
+    res <- PFSscale(domn=domn, resp=resp, Y=direct.regs, xsi.fixed=xsi.fixed, B=B, aux=aux) 
     
     Reslist[[length(Reslist)+1]] <- res
     names(Reslist)[[length(Reslist)]] <- domn
@@ -128,13 +136,13 @@ PisaRescale <- function(x,domn) {
 
 
 ######################
-## IntlFreq##
+## IntlPars##
 ##########################
 
-IntlPars<-function(domn,pars) {
+IntlPars<-function(domn, pars) {
   # IntlPars loads international item parameters by domain
   # Args:  domn= domain as "read,domn,scie"
-  #         pars= freq or diff  
+  #         pars= freq, diff or slope
   # Returns: a data frame with international item frequencies or IRT parameters
   
   

@@ -120,15 +120,15 @@ ui <-shiny::navbarPage("PISA-Based Test for Schools Validation Study",
                             
                                   shiny::tabPanel("Model fit (Infit)",
                                   shiny::HTML("<b> Model fit (Infit) </b> </br>  <p> For each item parameter, the fit MNSQ (infit) index was 
-                                          used to provide an indication of the compatibility of the model and the data. For each student,
+                                          used to provide an indication of the compatibility of the (international) model and the (national) data. For each student,
                                           the model describes the probability of obtaining the different item scores. It is therefore 
-                                          possible to compare the model prediction and what has been observed for one item across students.
+                                          possible to compare the model prediction (with international parameters) and what has been observed for one item across students.
                                           Accumulating comparisons across students gives an item-fit statistic.  </br> </br>
                                           A weighted MNSQ greater than one is associated with a low discrimination index, meaning the data 
                                           exhibits more variability than expected by the model. </br> </br>
                                           PISA for Schools accepts small variations of MNSQ around one, however, values larger than 1.2 indicate
                                           that the item discrimination is lower than assumed by the model, and values below 0.8 show that the item
-                                          discrimination is higher than assumed </p> </br> </br> "),
+                                          discrimination is higher than assumed. Only statistically significant values are reported. </p> </br> </br> "),
                                   shiny::numericInput("obs5", label = shiny::h5("Number of items to view"), 10),
                                   shiny::HTML('</br> <b> Mathematics items </b>'),
                                   shiny::tableOutput('table5_math'),
