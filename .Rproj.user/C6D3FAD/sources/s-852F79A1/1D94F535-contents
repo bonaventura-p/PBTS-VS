@@ -28,7 +28,25 @@ shiny::shinyApp(ui = ui, server = server)-> VSshiny
 
 VSshiny
 
-
-
-
+# "V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/data/Japan/score.data.txt" %>%
+# read.table(., header=T, sep="\t") %>%
+# dplyr::select(.,dplyr::matches("^PS")) -> read.data 
+# 
+# #getting international parameters (for now slopes Are all fixed to 1)
+# IntlPars("scie","diff") %>%
+#   AnchorValues(domn="scie", score.data = read.data, item.data = ., irtpar = "diff") %>%
+#   data.matrix(.) -> xsi.fixed
+# 
+# IntlPars("scie","slope") %>%
+#   AnchorValues(domn="scie", score.data = read.data, item.data = ., irtpar = "slope") %>%
+#   data.matrix(.) -> B
+# 
+# #dim input for tam.mml
+# dim(B)[3] <- 1
+# 
+# 
+# # 2PL TAM model with free difficulty parameters and fixed slopes = 1PL model
+# read.data %>%
+#   #TAM::tam(.)->read.inout
+#   TAM::tam.mml(., B = B, irtmodel="2PL", control=list(maxiter = 500)) -> tam.input
 

@@ -39,7 +39,8 @@ server <- function(input,output){
   # load national data sets
   folderInput <- shiny::reactive({
     switch(input$folder,
-           "Andorra" = paste(wd, "data", "Andorra", sep="/"))
+           "Andorra" = paste(wd, "data", "Andorra", sep="/"),
+           "Japan" = paste(wd, "data", "Japan", sep="/"))
   })
 
   score.data <- shiny::reactive({

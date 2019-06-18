@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1560877489375.000,
+    "dirty" : true,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "E88A9DBA",
+    "lastKnownWriteTime" : 1560878959,
+    "last_content_update" : 1560880247060,
+    "path" : "V:/Pacileo_B/NOBACKUP/PISA PM/PFS/cleanup_data.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "131,0",
+        "scrollLine" : "109"
+    },
+    "relative_order" : 8,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

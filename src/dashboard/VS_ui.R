@@ -4,7 +4,7 @@
 ui <-shiny::navbarPage("PISA-Based Test for Schools Validation Study",
                  
                         shiny::tabPanel("Control room",
-                        shiny::selectInput("folder", shiny::h5("Choose a country:"), choices = c("Andorra")),        
+                        shiny::selectInput("folder", shiny::h5("Choose a country:"), choices = c("Andorra","Japan")),        
                         shiny::HTML('</br>'),
                         shiny::checkboxInput("dodif", "Do DIF analysis", value = F), #and change choice of country with no default
                         shiny::HTML('</br>'),
