@@ -136,7 +136,7 @@ server <- function(input,output){
         diff.output() %>%
           dplyr::filter(.,!(zdif==0)) %>%
           dplyr::select(.,-zdif) %>%
-          dplyr::rename(., Item=item, 'National beta' = tam.value.x, "International beta" = tam.value.y) %>%
+          dplyr::rename(., Item=item, 'National beta' = tam.value.nat, "International beta" = tam.value) %>%
           head(., n=input$obs4)
       })
       
@@ -301,14 +301,14 @@ server <- function(input,output){
   output$plot4 <- shiny::renderPlot({
     
     diff.fig.output() %>%
-      dplyr::mutate(.,z2dif=ifelse(zdif==0,0,1)) %>%
-      ggplot(., aes(x=tam.value.x, y=tam.value.y,label=ifelse(zdif != 0,item,""),color=factor(z2dif)))+
-      geom_point(aes(size=ifelse(z2dif == 1,0.2,2)))+
+      dplyr::mutate(., z2dif = ifelse(zdif == 0, 0, 1)) %>%
+      ggplot(., aes(x=tam.value.nat, y=tam.value,label=ifelse(z2dif == 0, "", item),color=factor(z2dif)))+
+      geom_point(aes(size=ifelse(z2dif == 0,2,0.2)))+
       scale_size_identity()+
       geom_smooth(aes( group = 0), method=lm, col=pbts_cols("turquoise"), se=FALSE)+ 
       geom_abline(slope = 1, intercept = 0, color="lightgrey", size = 0.2)+
       geom_text_repel(aes(colour = factor(z2dif)),size=2.5) +
-      scale_color_pbts(palette="RdGn",reverse=TRUE, labels=c("Unproblematic items", "Dodgy items"))+
+      scale_color_pbts(palette="RdGn", reverse=TRUE, labels=c("Unproblematic items", "Dodgy items"))+
       scale_x_continuous(limits = c(-3.5, 5.5))+
       scale_y_continuous(limits = c(-3.5, 5.5))+
       labs(x="National IRT beta parameter",
@@ -324,9 +324,9 @@ server <- function(input,output){
     #plot density
     
     diff.fig.output() %>%
-      dplyr::select(., tam.value.x, tam.value.y) %>%
-      tidyr::gather(., tam.source, tam.value, factor_key=TRUE) %>%
-      ggplot(., aes(tam.value, fill = tam.source)) + 
+      dplyr::select(., tam.value.nat, tam.value) %>%
+      tidyr::gather(., tam.source, tam.values, factor_key=TRUE) %>%
+      ggplot(., aes(tam.values, fill = tam.source)) + 
       geom_density(alpha=.5) + 
       scale_fill_pbts(palette="GyBe",reverse=TRUE, labels=c("National estimates", "International estimates"))+
       labs(x="IRT difficulty (beta parameter)", title ="IRT Difficulty distribution",

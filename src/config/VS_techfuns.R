@@ -250,6 +250,8 @@ pbts_palettes <- list(
   
   `RdGn`  = pbts_cols("red", "orange", "lightgreen","turquoise"),
   
+  `RdGn2`  = pbts_cols("red", "turquoise", "red"), #this is defined for 3 categories dummy (-1,0,1) where both -1 and 1 have negative connotation
+  
   `GnBe`   = pbts_cols("turquoise","lightblue", "oecdblue"),
   
   `GyBe`  = pbts_cols("dustygrey", "oecdblue"),

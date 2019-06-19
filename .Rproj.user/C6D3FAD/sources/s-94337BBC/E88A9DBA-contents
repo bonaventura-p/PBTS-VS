@@ -123,8 +123,8 @@ gold.data<-openxlsx::read.xlsx(path2gold, sheet="Code",colNames=T)
 
 #re do for each country/cycle
 write.table(gold.data, 
-            "V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Andorra/gold.data.txt",
-              sep="\t", col.names=T, row.names = F)
+            "V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/data/Japan/gold.data.txt",
+            sep="\t", col.names=T, row.names = F)
 
 write.table(cog.data, 
             "V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/data/Japan/score.data.txt",

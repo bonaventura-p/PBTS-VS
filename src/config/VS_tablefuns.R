@@ -91,13 +91,13 @@ PtBis <- function(ctt.data) {
 DiffItem<-function(tam.mod,intl.tam) {
   
   tam.mod %>%
-    dplyr::mutate(., ztam.value = (tam.output.tam.value-mean(tam.output.tam.value))/sd(tam.output.tam.value),
-                  zdif = dplyr::if_else(
-                    ztam.value - intl.tam$ztam.value >= qnorm(0.975), 1,
-                    dplyr::if_else(ztam.value - intl.tam$ztam.value <= -qnorm(0.975), -1,0))) %>%
-    dplyr::rename(., item = tam.output.item, tam.value=tam.output.tam.value) %>%
+    dplyr::rename(., item = tam.output.item, tam.value.nat=tam.output.tam.value) %>%
     dplyr::full_join(., intl.tam, by="item") %>%
-    dplyr::select(.,item, tam.value.x,tam.value.y,zdif) -> table4.output
+    dplyr::mutate(., ztam.value.nat = (tam.value.nat-mean(tam.value.nat))/sd(tam.value.nat),
+                  zdif = dplyr::if_else( #ztam.value is from intl.tam
+                    ztam.value.nat - ztam.value >= qnorm(0.975), 1,
+                    dplyr::if_else(ztam.value.nat - ztam.value <= -qnorm(0.975), -1,0))) %>%
+    dplyr::select(.,item, tam.value.nat,tam.value,zdif) -> table4.output #tam.value is from intl.tam
   
   table4.output %>%
     return(.)
