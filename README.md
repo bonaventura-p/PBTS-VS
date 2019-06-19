@@ -5,7 +5,7 @@ https://BonaventuraFrancesco.PACILEO@algobank.oecd.org:4430/BonaventuraFrancesco
 
 
 **git cmd**
-\\em-sbx-fs-1\EM_Apps\PortableGit\git-cmd.exe
+\\\em-sbx-fs-1\EM_Apps\PortableGit\git-cmd.exe
 
 
 **description**
