@@ -14,4 +14,4 @@ it should be enough to run the VS_shell.R in /src to get the results, provided t
 
 **information architecture**
 
-![](./images/infoarch.PNG)
+![](./images/infoarch2.PNG)
