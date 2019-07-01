@@ -82,6 +82,21 @@ server <- function(input,output){
                  raw.data = raw.data(), pca.data = pca.data(),kill.item=input$kill)
   })
 
+  
+#######################
+## test level analysis#
+#######################
+  
+lapply(domains, function(domn) {
+    
+    
+    
+  })
+  
+  
+  
+  
+  
 #############
 # Create tables
 #############
@@ -114,7 +129,7 @@ server <- function(input,output){
           as.data.frame(.) -> discr.output       
         
           PtBis(ctt.data = ctt.output, discr.data = discr.output) %>%
-            return(.)
+            return(.) 
       })
     
   
