@@ -1,0 +1,264 @@
+
+
+# Two objectives:
+#   1 Mininum sample size for PCA:
+#     - overfitting (Colombia Nov18);
+#     - overfitting (Colombia VS);
+#   2 Selection of PCA threshold:
+#     - PISA %
+#     - PRESS %
+#     - NON SIG DIFF FROM HIST %
+
+
+#set up
+#setting wd
+dirPisaForSchools2017<-'V:\\Pacileo_B\\NOBACKUP\\PISA PM\\PFS'
+
+setwd(dirPisaForSchools2017)
+getwd()
+
+#libraries
+library(dismo)
+library(tidyverse)
+library(caret)
+library(pls)
+library(magrittr)
+library(ggplot2)
+library(reshape2)
+library(stats)
+
+library("rmarkdown")
+library("fastDummies")
+library("xlsx")
+library("plyr")
+library("TAM")
+library("openxlsx") #for big excel files
+library("broom")
+library("zoo")
+library("intsvy")
+library("data.table")
+
+
+#functions
+
+kfold_custom <- function(n, k=NULL){
+  if(is.null(k)){ k <- n} # if undefined, assume leave-one-out
+  res <- vector(mode="list", k)
+  n.remain <- seq(n)
+  for(i in seq(k)){
+    samp <- sample(seq(length(n.remain)), ceiling(length(n.remain)/(k-i+1)))
+    res[[i]] <- n.remain[samp]
+    n.remain <- n.remain[-samp]
+  }
+  return(res)
+}
+
+
+pca_kcv <- function(X, ks=2, npc.max=ncol(X)){
+  kgroups <- kfold_custom(n = nrow(X), k = ks)
+  error <- matrix(0, nrow=dim(X)[1], ncol=min(dim(X)[2],npc.max))
+ 
+  for(n in seq(kgroups)){
+    
+    Xtrain = X[-kgroups[[n]],]
+    Xtrain = scale(Xtrain, center=TRUE, scale=FALSE)
+    V = svd(Xtrain)$v
+    Xtest = X[kgroups[[n]],,drop = FALSE]
+    Xtest = scale(Xtest, center=attr(Xtrain, "scaled:center"), scale=FALSE)
+    
+    for(j in 1:min(dim(V)[2],npc.max)){
+      P = V[,1:j] %*% t(V[,1:j])
+      err <- Xtest %*% (diag(length(diag(P))) - P + diag(diag(P)))
+      error[kgroups[[n]],j] <- error[kgroups[[n]],j] + rowSums(sqrt(err^2))
+      print(paste("n =", n, "; j =", j))
+    }
+  }
+  res <- list(
+    error=error
+  )
+  return(res)
+}
+
+
+
+#rescale functions
+PisaPread<-function(x) {
+  pv_factor<-(0.883*(x)-0.4837)/1.1002
+  pv_factor*100+500
+}
+
+PisaPmath<-function(x) {
+  pv_factor<-(x+0.1344)/1.2838
+  pv_factor*100+500
+}
+
+PisaPscie<-function(x) {
+  pv_factor<-(x-0.1797)/1.0724
+  pv_factor*100+500
+}
+
+PFSscale <-function(domn,resp=resp,Y=Y,xsi.fixed=xsi.fixed,aux=aux) {
+  #domn must be a string e.g. domn="read"
+  
+  if (is.null(domn)){print("domain missing")}
+  else {
+    
+    # marginal model for 1PL
+    marginal_model <- tam(resp, xsi.fixed = xsi.fixed, Y = direct_regs, pid=NULL)
+    
+    # computing plausible values
+    PVs <- tam.pv(marginal_model, nplausible = 5)
+    
+    # use the domain-specific function to transform the logit scale in PISA points
+    scale<-parse(text=paste0("PisaP",domn)) %>% eval()
+    results <- cbind(scale(PVs$pv[2:6]),aux)
+    
+    #rename plausible values
+    pvnames<-paste('PV',1:5,toupper(domn),sep='') 
+    setnames(results, old = c('PV1.Dim1','PV2.Dim1', 'PV3.Dim1', 'PV4.Dim1', 'PV5.Dim1'), new = pvnames)
+    
+    #creating new object
+    return(results)
+    #removing exhaust
+    rm(pvnames,scale,PVs,marginal_model)
+    
+  }
+  
+} 
+
+#load data
+"V:/Pacileo_B/NOBACKUP/PISA PM/PFS/COL_pca0419.csv" %>%
+   read.csv(.,header=T) %>%
+    dplyr::select(.,dplyr::matches("^AP|age")) %>%
+    {.}->pca_train
+
+#define smaller sample for crosscheck
+# set.seed(1992)
+# "V:/Pacileo_B/NOBACKUP/PISA PM/PFS/COL_pca1118.csv" %>%
+#   read.csv(.,header=T) %>%
+#   dplyr::filter(.,stidsch %in% paste("01_01",sample.int(50, 5)+45,sep="")) %>% #randomly pick 5 schools
+#   dplyr::select(.,matches("^AP|age")) %>%
+#   {.}->pca_trainSMALL
+
+#PCA Analysis
+#normal sample
+set.seed(1992) #replicable results
+
+PCA_all<-prcomp(pca_train,retx = TRUE, center = TRUE,scale. = TRUE) 
+
+PCA_all$x[,cumsum(PCA_all$sdev^2)/sum(PCA_all$sdev^2)<0.95] %>% base::NCOL() ->npc_max   ##only .5 variance (81 components)
+
+PCA_all$x[,cumsum(PCA_all$sdev^2)/sum(PCA_all$sdev^2)<0.8] %>% base::NCOL() ->npc_oecd   ##only .5 variance (81 components)
+
+
+expl.var <- data.frame(PC=seq(1:length(PCA_all$sdev)), Value=cumsum(PCA_all$sdev^2)/sum(PCA_all$sdev^2))
+
+expl.var %>%
+ggplot(.,aes(x=PC,y=Value)) + 
+  geom_line()+
+  geom_point(col=pbts_cols("lightblue")) +
+  geom_hline(yintercept=0.95, linetype="dashed", color = "red")+
+  geom_hline(yintercept=0.8, linetype="dashed", color = pbts_cols("oecdblue"))+
+theme(legend.position="bottom") +
+  labs(title="Percentage of variance explained by PCA components",x="Number of PCs", y = "% Variance") +
+  scale_x_continuous(breaks=seq(0,500,50)) +  
+  scale_y_continuous(limits=c(0, 1),breaks=c(0,.25,.5,.75,.95),labels=c("0","25","50","75","95")) 
+  
+
+#full sample
+ResList<-list()
+
+for(i in c(2,10)) {
+  
+  res <- pca_kcv(X=pca_train, ks=i)
+  res<-lapply(res,colSums)
+  
+  ResList[[length(ResList)+1]] = res
+  
+}
+
+
+ResList %>% 
+  data.frame(.) %>% 
+    cbind(.,seq(489)) %>% 
+      dplyr::rename(.,fold2=error,fold10=error.1,PC=`seq(489)`) %>%
+        tidyr::gather(.,key=PC, value=Value) ->ColombiaRES
+  
+names(ColombiaRES)[2] <- "Folds"
+
+ColombiaRES %>%
+      ggplot(.,aes(x=PC,y=Value,color=factor(Folds))) + 
+        geom_line()+
+          geom_point() +
+  geom_vline(xintercept = 203,linetype="dashed", color = pbts_cols("oecdblue"))+
+  geom_vline(xintercept = 309,linetype="dashed", color = pbts_cols("red"))+
+  scale_color_pbts(palette="RdGn", reverse=TRUE, labels=c("10-folds", "2-folds"))+
+  theme(legend.position="bottom") +
+               labs(title="K-fold Cross Validation",x="Number of PCs", y = "PRESS") +
+                   scale_y_continuous(breaks=seq(300000, 500000,25000)) +
+                    scale_x_continuous(limits=c(0,400), breaks=seq(0, 400,50)) +
+  theme_gray()+
+  theme(legend.position="top",
+        legend.title=element_blank(),
+        legend.background = element_rect(fill="#EBEBEB"),
+        plot.subtitle=element_text(face="italic"))
+
+ 
+#PC that minimise PRESS
+npc_press<-ColombiaRES$PC[ColombiaRES$Value==min(ColombiaRES$Value) & ColombiaRES$Folds=="fold10"] #PC256
+PCA_all$Cum<-cumsum(PCA_all$sdev^2)/sum(PCA_all$sdev^2)
+
+
+#primary analysis
+
+##### load data
+#final dataset from PISA_S_primary_analysis around line 316
+COLdirect_regs<-direct_regs
+#anchorValues_domn
+#resp data as domn
+aux<-select(gold_data,matches("^W_FSTUWT$|^W_FSTR\\d+$|^stidsch$|^stidstd$"))
+
+
+#pct PRESS
+pct_press<-round(PCA_all$Cum[npc_press],2)
+#PISA pct
+pct_pisa<-0.8
+#HIST pct
+pct_hist<-0.95
+
+
+ResultsList<-list()
+
+for (i in c(seq(0.5,0.75,by=0.05),pct_pisa,pct_press,pct_hist)) {
+  
+  print(i)
+  
+  #PC from PCA_colx to the former dataframe of direct regressors
+  COLdirect_regs %<>% cbind(.,PCA_all$x[,cumsum(PCA_all$sdev^2)/sum(PCA_all$sdev^2)<i]) 
+  
+  res<-PFSscale(domn="read",resp=read,Y=COLdirect_regs,xsi.fixed = anchorValues_read,aux=aux)
+  
+  resMean<-pisa.mean.pv(pvlabel="READ", by = "stidsch",data =res) 
+  
+  #creating dataset
+  #mean
+  resMean %<>%
+    select(.,stidsch,Mean,matches("s.e.")) %>%
+    setnames(c("stidsch",paste("read","score",sep='_'),paste("read","score_se",sep='_'))) %>%
+    {.}->SchoolRead
+  
+  ResultsList[[length(ResultsList)+1]] = SchoolRead
+
+}
+
+
+ResultsList %>% 
+  data.frame(.) %>%
+    select(.,matches("^read_score$|^read_score.\\d{1}|^stidsch$|^stidsch.\\d{1}")) ->prova
+
+t.test(prova$read_score,prova$read_score.5)
+
+ColSchData1 %>% select(.,btn_per_math,my2btn_per_math) %>%
+  gather(key=Type, value=Value) %>% 
+  ggplot(aes(x=Value,fill=Type)) + 
+  geom_histogram(position="dodge",stat = "bin", binwidth=1)
