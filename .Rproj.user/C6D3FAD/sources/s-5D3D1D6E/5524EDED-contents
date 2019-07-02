@@ -47,18 +47,23 @@ pca_kcv <- function(X, ks=2, npc.max=ncol(X)){
   return(res)
 }
 
-
-raw.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Colombia/Round3/raw.data.txt", header=T, sep="\t")
-score.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Colombia/Round3/score.data.txt", header=T, sep="\t")
-pca.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Colombia/Round3/pca.data.txt", header=T, sep="\t")
-gold.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Colombia/Round3/gold.data.txt", header=T, sep="\t")
-
-
-
+#colombia
+ raw.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Colombia/Round3/raw.data.txt", header=T, sep="\t")
+ score.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Colombia/Round3/score.data.txt", header=T, sep="\t")
+ pca.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Colombia/Round3/pca.data.txt", header=T, sep="\t")
+ gold.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Colombia/Round3/gold.data.txt", header=T, sep="\t")
+# 
 
 
+# #andorra
+# raw.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/data/Andorra/raw.data.txt", header=T, sep="\t")
+# score.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/data/Andorra/score.data.txt", header=T, sep="\t")
+# pca.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/data/Andorra/pca.data.txt", header=T, sep="\t")
+# gold.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/data/Andorra/gold.data.txt", header=T, sep="\t")
 
 
+
+pca.data %<>% dplyr::select(.,dplyr::matches("^AP|age"))
 
 # get item parameters
 IntlPars("math","diff") %>%
@@ -81,7 +86,7 @@ pca.res  <-  PcaComp(pca.data=pca.data)
 
 resdf <- data.frame() 
 
-for(i in  length(pca.res)) {
+for(i in  1:length(pca.res)) {
   
   direct.regs <- DirectRegs(stu.data=gold.data, raw.data=raw.data) 
   
@@ -93,19 +98,58 @@ for(i in  length(pca.res)) {
     TAM::tam.mml(., xsi.fixed = xsi.fixed, B = B, irtmodel = "2PL", Y = direct.regs, control=list(maxiter = 500)) -> res
   
   res["person"] %>%
+    #math specific transformations
     as.data.frame(.) %>%
+    dplyr::mutate(., person.EAP=PisaRescale(person.EAP,"math"), person.SD.EAP= person.SD.EAP/1.28^2*100)  %>%
     dplyr::summarize_at(.,dplyr::vars(person.EAP,person.SD.EAP),c(mean,sd)) %>%
-    dplyr::rename(Mean_Mean.EAP=`person.EAP_function (x, ...) ...`, 
-                  Mean_SD.EAP=`person.SD.EAP_function (x, ...) ...`,
-                  SD_Mean.EAP=`person.EAP_function (x, na.rm = FALSE) ...`,
-                  SD_SD.EAP=`person.SD.EAP_function (x, na.rm = FALSE) ...`) %>%
-    dplyr::mutate(., PC=i)-> EAP_res
+    dplyr::rename(Mean.EAP=`person.EAP_function (x, ...) ...`, 
+                  Mean.SD.EAP=`person.SD.EAP_function (x, ...) ...`,
+                  SD.EAP=`person.EAP_function (x, na.rm = FALSE) ...`,
+                  SD.SD.EAP=`person.SD.EAP_function (x, na.rm = FALSE) ...`) %>%
+    dplyr::mutate(., PC=i) %>%
+    dplyr::select(., PC, Mean.EAP, SD.EAP, Mean.SD.EAP, SD.SD.EAP)-> EAP_res
   
   resdf <- rbind(resdf, data.frame(EAP_res,row.names=NULL))
   
 }
-  
-# translate results in PISA scale and plot them 
+
+
+# plot results
+resdf %>%
+  ggplot(., aes(y=Mean.EAP,x=PC)) +
+  geom_line(col=pbts_cols("oecdblue"),size=1)+
+  theme(legend.position="bottom") +
+  labs(title="Mean EAP by number of PCA components",x="Number of PCs") +
+  scale_y_continuous(limits=c(min(resdf$Mean.EAP)-25,max(resdf$Mean.EAP)+25)) -> MeanEAP
+
+# plot results
+resdf %>%
+  ggplot(., aes(y=SD.EAP,x=PC)) +
+  geom_line(col=pbts_cols("oecdblue"),size=1)+
+  theme(legend.position="bottom") +
+  labs(title="SD(EAP) by number of PCA components",x="Number of PCs") +
+  scale_y_continuous(limits=c(min(resdf$SD.EAP)-15,max(resdf$SD.EAP)+15)) -> SDEAP
+
+
+# plot results
+resdf %>%
+  ggplot(., aes(y=Mean.SD.EAP,x=PC)) +
+  geom_line(col=pbts_cols("oecdblue"),size=1)+
+  theme(legend.position="bottom") +
+  labs(title="Mean of SD(EAP) by number of PCA components",x="Number of PCs") +
+  scale_y_continuous(limits=c(min(resdf$Mean.SD.EAP)-15,max(resdf$Mean.SD.EAP)+15))  ->M.SDEAP
+
+
+# plot results
+resdf %>%
+  ggplot(., aes(y=SD.SD.EAP,x=PC)) +
+  geom_line(col=pbts_cols("oecdblue"),size=1)+
+  theme(legend.position="bottom") +
+  labs(title="Standard deviation of SD(EAP) by number of PCA components",x="Number of PCs") +
+  scale_y_continuous(limits=c(min(resdf$SD.SD.EAP)-10,max(resdf$SD.SD.EAP)+10)) -> SD.SDEAP
+
+
+gridExtra::grid.arrange( MeanEAP , SDEAP, M.SDEAP, SD.SDEAP,   ncol=2, nrow=2, widths = c(1, 0.6))
 
 
 # 
@@ -126,7 +170,7 @@ for(i in  length(pca.res)) {
 #normal sample
 set.seed(1992) #replicable results
 
-PCA_allAND<-prcomp(pca_data,retx = TRUE, center = TRUE,scale. = TRUE) 
+PCA_allAND<-prcomp(pca.data,retx = TRUE, center = TRUE,scale. = TRUE) 
 
 PCA_allAND$x[,cumsum(PCA_allAND$sdev^2)/sum(PCA_allAND$sdev^2)<0.95] %>% base::NCOL() ->npc_max   ##only .5 variance (81 components)
 
@@ -141,10 +185,13 @@ expl.var %>%
   geom_point(col=pbts_cols("lightblue")) +
   geom_hline(yintercept=0.95, linetype="dashed", color = "red")+
   geom_hline(yintercept=0.8, linetype="dashed", color = pbts_cols("oecdblue"))+
-  theme(legend.position="bottom") +
-  labs(title="Percentage of variance explained by PCA components",x="Number of PCs", y = "% Variance") +
-  scale_x_continuous(breaks=seq(0,500,50)) +  
-  scale_y_continuous(limits=c(0, 1),breaks=c(0,.25,.5,.75,.95),labels=c("0","25","50","75","95")) 
+  labs(title="Variance by PCA",x="Number of PCs", y = "% Variance") +
+  scale_x_continuous(limits=c(0,400)) +   #200 for andorra
+  scale_y_continuous(limits=c(0, 1),breaks=c(0,.25,.5,.75,.95),labels=c("0","25","50","75","95")) +
+  theme_gray()+
+  theme(legend.position="right",
+        legend.title=element_blank(),
+        legend.background = element_rect(fill="#EBEBEB")) ->expl.fig
 
 
 #full sample
@@ -152,7 +199,7 @@ ResList<-list()
 
 for(i in c(2,5)) {
   
-  res <- pca_kcv(X=pca_data, ks=i)
+  res <- pca_kcv(X=pca.data, ks=i)
   res<-lapply(res,colSums)
   
   ResList[[length(ResList)+1]] = res
@@ -160,40 +207,42 @@ for(i in c(2,5)) {
 }
 
 
+
 ResList %>% 
   data.frame(.) %>% 
-  cbind(.,seq(523)) %>% 
-  dplyr::rename(.,fold2=error,fold10=error.1,PC=`seq(523)`) %>%
-  tidyr::gather(.,key=PC, value=Value) ->ColombiaRES
+  cbind(.,seq(length(pca.data))) %>% 
+  dplyr::rename(.,fold2=error,fold5=error.1,PC=`seq(length(pca.data))`) %>%
+  tidyr::gather(.,key=PC, value=Value) -> KCVres
 
-names(ColombiaRES)[2] <- "Folds"
+names(KCVres)[2] <- "Folds"
 
-ColombiaRES %>%
+
+##PC that minimise PRESS
+KCVres %>%
+  dplyr::filter(., KCVres$Value>0 )->Col2
+
+
+npc_press<-Col2$PC[Col2$Value==min(Col2$Value) & Col2$Folds=="fold5"] #PC256
+
+#plot
+KCVres %>%
+  #dplyr::filter(.,Folds == "fold5") %>%
   ggplot(.,aes(x=PC,y=Value,color=factor(Folds))) + 
   geom_line()+
   geom_point() +
-  #geom_vline(xintercept = 203,linetype="dashed", color = pbts_cols("oecdblue"))+
-  #geom_vline(xintercept = 309,linetype="dashed", color = pbts_cols("red"))+
-  scale_color_pbts(palette="RdGn", reverse=TRUE, labels=c("10-folds", "2-folds"))+
+  geom_vline(xintercept = npc_oecd,linetype="dashed", color = pbts_cols("oecdblue"))+
+  geom_vline(xintercept = npc_max,linetype="dashed", color = pbts_cols("red"))+
+#  geom_vline(xintercept = npc_press,linetype="dashed", color = pbts_cols("turquoise"))+
+  scale_color_pbts(palette="RdGn", reverse=TRUE)+
   theme(legend.position="bottom") +
   labs(title="K-fold Cross Validation",x="Number of PCs", y = "PRESS") +
-  scale_y_continuous(breaks=seq(300000, 500000,25000)) +
-  scale_x_continuous(limits=c(0,400), breaks=seq(0, 400,50)) +
+  scale_y_continuous(limits=c(350000, 500000)) + #30,000 to 40,000 fpr andorra
+  scale_x_continuous(limits=c(0,400)) + #200 for andorra
   theme_gray()+
-  theme(legend.position="top",
+  theme(legend.position="right",
         legend.title=element_blank(),
         legend.background = element_rect(fill="#EBEBEB"),
-        plot.subtitle=element_text(face="italic"))
-
-
-ColombiaRES %>%
-  dplyr::filter(., ColombiaRES$Value>0 )->Col2
-  
-  
-#PC that minimise PRESS
-npc_press<-Col2$PC[Col2$Value==min(Col2$Value) & Col2$Folds=="fold10"] #PC256
-PCA_allAND$Cum<-cumsum(PCA_allAND$sdev^2)/sum(PCA_allAND$sdev^2)
-
+        plot.subtitle=element_text(face="italic"))  ->KCVfig
 
 
 
@@ -263,19 +312,21 @@ Math_PCA1 %>%
 Math_fullpca %>%
   reshape(., idvar="stidsch", varying=2:13, direction="long", sep="_") %>%
   ggplot(.,aes(x=stidsch,y=Mean,color=factor(time))) + 
-  geom_errorbar(aes(ymin=Mean-SE, ymax=Mean+SE), width=.1, alpha=0.1,
+  geom_errorbar(aes(ymin=Mean-SE, ymax=Mean+SE), width=.1, alpha=0.3,
                 position=position_dodge(0.05))+
   geom_point()+
   scale_color_pbts(palette="Main", labels=c("45%","55%","65%","75%","85%","95%"))+
   labs(y="Mean score in mathematics", 
-       title ="Mean score in mathematics with by % variation explained by PCA components")+
+       title ="Mean score in mathematics with by PCA components")+
   theme_gray()+
   theme(axis.text.x = element_text(angle = 90), 
         axis.title.x = element_blank(),
         legend.position="top",
         legend.title=element_blank(),
         legend.background = element_rect(fill="#EBEBEB"),
-        plot.subtitle=element_text(face="italic"))
+        plot.subtitle=element_text(face="italic")) -> MeanPCA
+
+gridExtra::grid.arrange(KCVfig, expl.fig, ncol=2, nrow=1, widths=c(1,0.7))
 
 
 
