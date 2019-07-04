@@ -113,8 +113,8 @@ DiffItem<-function(tam.mod,intl.tam) {
 Infit<- function(tam.fit) {
   
   tam.fit %>%
-    dplyr::mutate(., w.mnsq = dplyr::if_else(fit.output.Infit > 1.2 && abs(fit.output.Infit_t)>= qnorm(0.975), 1,
-                                             dplyr::if_else(fit.output.Infit < 0.8 && abs(fit.output.Infit_t)>= qnorm(0.975), -1, 0))) %>%
+    dplyr::mutate(., w.mnsq = dplyr::if_else(fit.output.Infit > 1.2 && fit.output.Infit_t >= qnorm(0.975), 1,
+                                             dplyr::if_else(fit.output.Infit < 0.8 && fit.output.Infit_t <= -qnorm(0.975), -1, 0))) %>%
     dplyr::select(., fit.output.parameter, fit.output.Infit,w.mnsq) %>%
     dplyr::rename(., item=fit.output.parameter,	Infit = fit.output.Infit)-> table5.output
   

@@ -191,7 +191,7 @@ VSscale <-function(domn, resp) {
   # VSscale computes xsi, fit, wright,  pv and pt bis correlation  returns them as a list 
   # Args: domn=PISA domain
   #       resp=scored data
-  # Returns: list with xsi estimates, fit, wright,  pv and pt bis correlation 
+  # Returns: list with xsi estimates, fit, wright, information curves, wle,  pv and pt bis correlation 
   
   # subset scored data
   resp %>%
@@ -223,12 +223,21 @@ VSscale <-function(domn, resp) {
   score.input %>%
     TAM::tam.mml(., xsi.fixed=xsi.fixed, B = B, irtmodel="2PL", control=list(maxiter = 500)) -> tamintl.input
   
+  #information curves
+  tam.input %>%
+    TAM::IRT.informationCurves(.) -> info.input
+  
+  data.frame(theta=info.input["theta"], 
+             test_info_curve=info.input["test_info_curve"], se_curve=info.input["se_curve"], 
+             t(as.data.frame(info.input["info_curves_item"])),row.names = NULL)-> info.output
+  
+
   #wright map
   c("resp","nitems","maxK","AXsi","xsi","A","B","ndim","person") %>% 
     tam.input[.] -> wright.output
   
   
-  #compute sig. diff stat
+  #output to compute sig. diff stat
   data.frame(item = rownames(tam.input$xsi), 
              tam.value = tam.input$xsi$xsi) -> diff.output
   
@@ -272,7 +281,7 @@ VSscale <-function(domn, resp) {
   
   
   # final wrap-up creates list
-  list("tam.output" = diff.output, "ctt.output" = ctt.output, 
+  list("tam.output" = diff.output, "ctt.output" = ctt.output, "info.output"=info.output, 
        "fit.output"= fit.output, "wright.output" = wright.output, "discr.output"=discr.output) -> VSoutput 
   
   VSoutput %>% 

@@ -7,7 +7,20 @@
 #Technical functions
 ################################################
 
+PrItem <- function(xsi,theta) {
+  
+  1 / (1 + exp(-1 * (theta - xsi)))
+  
+} 
 
+
+PrTest <- function(xsi, theta) {
+  J <- length(xsi)
+  for (j in 1:J) {
+    P <- 1 / (1 + exp(-1*(theta-xsi[j])))
+  }
+  P
+}
 
 ######################
 ## VSscaleloop##
@@ -19,7 +32,14 @@ VSscaleloop<-function(domains=domains,resp,dodif=FALSE,gender.data=NULL, gender.
   #         dodif= boolean for DIF
   #   gender.data= data frame with gender data
   #   gender.name= variable name for gender
+  #   kill.item= item name to drop from resp
   #  Returns: a list with 2 levels, first domain, second analysis output 
+
+  #  , kill.item
+  
+  # drop dodgy items in scored data
+  #resp %<>%  .[,!(names(.) %in% kill.item)]
+  
   ResList<-list()
   
   for (domn in domains) {  
@@ -52,19 +72,16 @@ VSscaleloop<-function(domains=domains,resp,dodif=FALSE,gender.data=NULL, gender.
 ######################
 ## PFSscaleloop##
 ##########################
-PFSscaleloop<-function(domains,resp,stu.data,raw.data,pca.data,kill.item) {
+PFSscaleloop<-function(domains,resp,stu.data,raw.data,pca.data) {
   # PFSscaleloop is a loop and wrapper function to compute cognitive scales across domains
   # Args: domains= PISA domains
   #         resp = scored.data
   #         stu.data= questionnaire data
   #   raw.data= data frame with not reached variable
   #   pca.data= data frame with PCA dummy input
-  #   kill.item= item name to drop from resp
   #  Returns: a list with results by domains 
   
-  # drop dodgy items in scored data
-  resp %<>%  .[,!(names(.) %in% kill.item)]
-  
+
   #keeping the items in raw dataset
   
   # define aux data frame

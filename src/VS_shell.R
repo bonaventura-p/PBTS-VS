@@ -15,7 +15,6 @@ library("magrittr")
 library("ggrepel") #loads ggplot2  
 library("RColorBrewer") 
 library("scales") 
-library("pdflatex")
 
 source(paste(wd,'src/config', 'VS_techfuns.R', sep="/"))
 source(paste(wd,'src/config', 'VS_tablefuns.R', sep="/"))

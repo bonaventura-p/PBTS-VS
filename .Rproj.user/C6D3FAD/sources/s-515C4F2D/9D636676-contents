@@ -1,0 +1,124 @@
+lapply(domains, function(domn) {
+  
+  
+  
+  #Table 2. Correlation between score frequencies 0,1,2 pilot 
+  intl.freq <- IntlPars(domn,"freq")
+  
+  corr.output<- shiny::reactive({ 
+    results()[[domn]]["ctt.output"] %>% 
+      as.data.frame(.) %>%  
+      Correl(ctt.data=.,intl.ctt = intl.freq)
+  })
+  
+  output[[paste('table2',domn,sep ="_")]] <- shiny::renderTable({
+    
+    corr.output() %>% 
+      dplyr::rename(., "Item category"=item.freq, Correlation=corr.value) 
+  })  
+  
+  #Table 3 Dodgy items based on biserial-point values 
+  ptbis.output<- shiny::reactive({ 
+    results()[[domn]]["ctt.output"] %>% 
+      as.data.frame(.) -> ctt.output
+    
+    results()[[domn]]["discr.output"] %>% 
+      as.data.frame(.) -> discr.output       
+    
+    PtBis(ctt.data = ctt.output, discr.data = discr.output) %>%
+      return(.) 
+  })
+  
+  
+  output[[paste('table3',domn,sep ="_")]]<-shiny::renderTable({
+    
+    ptbis.output() %>%
+      dplyr::filter(.,!(crit.one ==0 & crit.two==0 & crit.three == 0))  %>%
+      dplyr::mutate_at(., dplyr::vars("crit.one"), dplyr::funs(ifelse(.== 1, "Non-negative Category 0","0"))) %>%
+      dplyr::mutate_at(., dplyr::vars("crit.two"),dplyr::funs(ifelse(.== 1, "Not ordered pt-biserial correlation","0"))) %>%
+      dplyr::mutate_at(., dplyr::vars("crit.three"),dplyr::funs(ifelse(.== 1, "Low Discrimination","0"))) %>%
+      dplyr::rename(., "Discrimination index" = discr, 'Criterion 1'= crit.one,
+                    'Criterion 2'= crit.two,
+                    'Criterion 3'= crit.three) %>%
+      head(., n=input$obs3)
+  })
+  
+  
+  # Table 4. Dodgy items based on difficulty differences
+  intl.diff <- IntlPars(domn,"diff")
+  
+  diff.output<- shiny::reactive({ 
+    results()[[domn]]["tam.output"] %>% 
+      as.data.frame(.) %>%
+      DiffItem(tam.mod = .,intl.tam = intl.diff) 
+  })
+  
+  
+  output[[paste('table4',domn,sep ="_")]]<-shiny::renderTable({
+    
+    diff.output() %>%
+      dplyr::filter(.,!(zdif==0)) %>%
+      dplyr::select(.,-zdif) %>%
+      dplyr::rename(., Item=item, 'National beta' = tam.value.nat, "International beta" = tam.value) %>%
+      head(., n=input$obs4)
+  })
+  
+  #Table 5. Dodgy items based on coefficient MNSQ
+  fit.output<- shiny::reactive({ 
+    results()[[domn]]["fit.output"] %>%
+      as.data.frame(.) %>%  
+      Infit(tam.fit = .)
+  })
+  
+  output[[paste('table5',domn,sep ="_")]]<-shiny::renderTable({ 
+    
+    fit.output() %>%  
+      dplyr::filter(., !(w.mnsq==0)) %>%
+      dplyr::select(.,-w.mnsq) %>%
+      head(., n=input$obs5)
+  })
+  
+  #Table 6. Dodgy items based on DIF criterion
+  dif.output<- shiny::reactive({ 
+    results()[[domn]]["dif.output"] %>% 
+      as.data.frame(.) %>%
+      DIFitem(DIF.mod = .)
+  })
+  
+  output[[paste('table6',domn,sep ="_")]]<-shiny::renderTable({ 
+    
+    dif.output() %>% 
+      dplyr::filter(., !(gdif==0)) %>%
+      dplyr::select(.,-gdif) %>%
+      dplyr::rename(., Girls = `1_dif.output.xsi.item`, Boys = `2_dif.output.xsi.item`) %>%
+      head(., n=input$obs6)
+  })
+  
+  
+  #Table summary
+  summary.input <- shiny::reactive({  
+    
+    if ( !(input$dodif) ) {
+      diff.output() %>%
+        dplyr::full_join(.,fit.output(),by="item")%>%
+        dplyr::select(.,dplyr::matches("item|zdif|w.mnsq")) %>%
+        dplyr::mutate(.,irtdif=substr(item,11,14),item=substr(item,1,9)) %>%
+        spread_n(.,key = irtdif, value =c("zdif","w.mnsq")) %>%
+        dplyr::full_join(.,ptbis.output(),by="item") 
+    } else if (input$dodif) {
+      diff.output() %>%
+        dplyr::full_join(.,fit.output(),by="item")%>%
+        dplyr::select(.,dplyr::matches("item|zdif|w.mnsq")) %>%
+        dplyr::mutate(.,irtdif=substr(item,11,14),item=substr(item,1,9)) %>%
+        spread_n(.,key = irtdif, value =c("zdif","w.mnsq")) %>%
+        dplyr::full_join(.,ptbis.output(),by="item") %>%
+        dplyr::full_join(.,dif.output(),by="item")
+      
+    }
+  })
+  
+
+  
+  
+  
+})

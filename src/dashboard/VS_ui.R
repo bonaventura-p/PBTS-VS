@@ -161,32 +161,77 @@ ui <-shiny::navbarPage("PISA-Based Test for Schools Validation Study",
                                   shiny::tableOutput('table6_read'),
                                   shiny::HTML('</br> <b> Science items </b>'),
                                   shiny::tableOutput('table6_scie')   
-                                     ),
+                                     )#,
                             
-                                  shiny::tabPanel("Wright Map",
-                                    shiny::sidebarLayout(
-                                      shiny::sidebarPanel(
-                                        shiny::selectInput("domain7", shiny::h5("Choose a domain:"), choices = c("math","read","scie")), 
-                                         width=2
-                                       ),
-                                      shiny::mainPanel(
-                                        shiny::HTML('<b> Wright Map </b> </br> <p>  Theoretically, when candidates and items are opposite each other on the map, the difficulty of the item 
-                                              and the ability of the candidate are comparable, so the candidate has approximately a 50% probability
-                                              of answering the item correctly. </p> </br>   </br>'),
-                                        shiny::HTML('</br>'),
-                                        shiny::plotOutput("plot7"),
-                                         width=10
-                                         )
-                                       )
-                            )
+                            #       shiny::tabPanel("Wright Map",
+                            #         shiny::sidebarLayout(
+                            #           shiny::sidebarPanel(
+                            #             shiny::selectInput("domain7", shiny::h5("Choose a domain:"), choices = c("math","read","scie")), 
+                            #              width=2
+                            #            ),
+                            #           shiny::mainPanel(
+                            #             shiny::HTML('<b> Wright Map </b> </br> <p>  Theoretically, when candidates and items are opposite each other on the map, the difficulty of the item 
+                            #                   and the ability of the candidate are comparable, so the candidate has approximately a 50% probability
+                            #                   of answering the item correctly. </p> </br>   </br>'),
+                            #             shiny::HTML('</br>'),
+                            #             shiny::plotOutput("plot7"),
+                            #              width=10
+                            #              )
+                            #            )
+                            # )
                             ),
                  
+                 
                  shiny::navbarMenu("Dodgy items review",
-                                   shiny::tabPanel("TCC/Cronbach")
+                                   
+                                   shiny::tabPanel("Item information and characteristic curves",
+                                                   
+                                                   shiny::HTML('<b> Item information and characteristic curves </b> </br> </br> </br>'),
+                                                   
+                                                   shiny::sidebarLayout(
+                                                     shiny::sidebarPanel(
+                                                       shiny::selectInput("domain9", shiny::h5("Choose a domain:"), choices = c("math","read","scie")),
+                                                       shiny::uiOutput('icc.ui'),
+                                                       width=3
+                                                     ),
+                                                     shiny::mainPanel(
+                                                       shiny::plotOutput("plot9"),
+                                                       shiny::HTML('</br> </br>'),
+                                                       shiny::HTML('</br> </br>'),
+                                                       shiny::plotOutput("plot7"),
+#                                                       shiny::tableOutput('tablex') ,  
+                                                       
+                                                       width=9
+                                                     )
+                                                   )
+                                                   
+                                   ),
+                                   
+                                   shiny::tabPanel("Test information and test characteristic curves",
+                                                   
+                                                   shiny::HTML('<b> Test information and test characteristic curves </b> </br> </br> </br>'),
+                                                   
+                                                   shiny::sidebarLayout(
+                                                     shiny::sidebarPanel(
+                                                       shiny::selectInput("domain10", shiny::h5("Choose a domain:"), choices = c("math","read","scie")),
+                                                       width=2
+                                                     ),
+                                                     shiny::mainPanel(
+                                                       shiny::plotOutput("plot10"),
+                                                       width=10
+                                                     )
+                                                   ),
+                                                   shiny::HTML('</br>  </br>'),
+                                                   shiny::HTML('<b> Dodgy items </b> </br> </br> </br>'),
+                                                   shiny::uiOutput('killitem.ui')
+                                                   
+                                   )
                             
                  ),
                  
                  shiny::navbarMenu("Results preview",
+                                   
+                                   
                             
                          shiny::tabPanel("Primary analysis",
                            
@@ -201,11 +246,7 @@ ui <-shiny::navbarPage("PISA-Based Test for Schools Validation Study",
                                              shiny::plotOutput("plot8"),
                                          width=10
                                        )
-                                     ),
-                                     shiny::HTML('</br>  </br>'),
-                                     shiny::HTML('<b> Dodgy items </b> </br> </br> </br>'),
-                                     shiny::uiOutput('killitem.ui')
-                                     
+                                     )
                             )
                             
                  ), 
