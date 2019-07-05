@@ -25,7 +25,7 @@ PrTest <- function(xsi, theta) {
 ######################
 ## VSscaleloop##
 ##########################
-VSscaleloop<-function(domains=domains,resp,dodif=FALSE,gender.data=NULL, gender.name=NULL) {
+VSscaleloop<-function(domains=domains,resp,dodif=FALSE,gender.data=NULL, gender.name=NULL,kill.item=NULL) {
   # VSscaleloop is a loop function to run VSscale and VSDIFscale across domains
   # Args: domains= PISA domains
   #         resp = scored.data
@@ -38,7 +38,7 @@ VSscaleloop<-function(domains=domains,resp,dodif=FALSE,gender.data=NULL, gender.
   #  , kill.item
   
   # drop dodgy items in scored data
-  #resp %<>%  .[,!(names(.) %in% kill.item)]
+  resp %<>%  .[,!(names(.) %in% kill.item)]
   
   ResList<-list()
   
@@ -85,7 +85,7 @@ PFSscaleloop<-function(domains,resp,stu.data,raw.data,pca.data) {
   #keeping the items in raw dataset
   
   # define aux data frame
-  aux <- dplyr::select(stu.data,dplyr::matches("^W_FSTUWT$|^W_FSTR\\d+$|^stidsch$|^stidstd$"))
+  aux <- dplyr::select(stu.data,dplyr::matches("^W_FSTUWT$|^W_FSTR\\d+$|^stidsch$|^stidstd$|ST004Q01_15"))
   
   #  get direct regressors
   direct.regs <- DirectRegs(stu.data=stu.data, raw.data=raw.data) 

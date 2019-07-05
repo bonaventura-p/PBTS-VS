@@ -161,24 +161,7 @@ ui <-shiny::navbarPage("PISA-Based Test for Schools Validation Study",
                                   shiny::tableOutput('table6_read'),
                                   shiny::HTML('</br> <b> Science items </b>'),
                                   shiny::tableOutput('table6_scie')   
-                                     )#,
-                            
-                            #       shiny::tabPanel("Wright Map",
-                            #         shiny::sidebarLayout(
-                            #           shiny::sidebarPanel(
-                            #             shiny::selectInput("domain7", shiny::h5("Choose a domain:"), choices = c("math","read","scie")), 
-                            #              width=2
-                            #            ),
-                            #           shiny::mainPanel(
-                            #             shiny::HTML('<b> Wright Map </b> </br> <p>  Theoretically, when candidates and items are opposite each other on the map, the difficulty of the item 
-                            #                   and the ability of the candidate are comparable, so the candidate has approximately a 50% probability
-                            #                   of answering the item correctly. </p> </br>   </br>'),
-                            #             shiny::HTML('</br>'),
-                            #             shiny::plotOutput("plot7"),
-                            #              width=10
-                            #              )
-                            #            )
-                            # )
+                                     )
                             ),
                  
                  
@@ -198,6 +181,10 @@ ui <-shiny::navbarPage("PISA-Based Test for Schools Validation Study",
                                                        shiny::plotOutput("plot9"),
                                                        shiny::HTML('</br> </br>'),
                                                        shiny::HTML('</br> </br>'),
+                                                       shiny::HTML('<b> Wright Map </b> </br> <p>  Theoretically, when candidates and items are opposite each other on the map, the difficulty of the item 
+                                               and the ability of the candidate are comparable, so the candidate has approximately a 50% probability
+                                                                   of answering the item correctly. </p> </br>   </br>'),
+                                                       shiny::HTML('</br>'),
                                                        shiny::plotOutput("plot7"),
 #                                                       shiny::tableOutput('tablex') ,  
                                                        

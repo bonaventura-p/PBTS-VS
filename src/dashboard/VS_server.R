@@ -68,10 +68,10 @@ server <- function(input,output){
   
   #Validation study analysis
   results<-shiny::reactive({
-    VSscaleloop(domains=domains, resp=score.data(), dodif=input$dodif, gender.data=gold.data(), gender.name="ST004Q01_15")
+    VSscaleloop(domains=domains, resp=score.data(), dodif=input$dodif, gender.data=gold.data(), gender.name="ST004Q01_15", kill.item=input$kill) #,kill.item=input$kill
   })
-  #,kill.item=input$kill
-  #Primary analysis
+
+    #Primary analysis
   primary<-shiny::reactive({
     PFSscaleloop(domains=domains, resp = score.data(), stu.data = gold.data(), 
                  raw.data = raw.data(), pca.data = pca.data())
@@ -376,53 +376,7 @@ server <- function(input,output){
               plot.subtitle=element_text(face="italic"))
     })
     
-# Figure 7: Wright Map
-  # 
-  # fig.wright.nested<-shiny::reactive({
-  #   results()[[input$domain7]]["wright.output"]
-  # })
-  # 
-  # fig.wright<-shiny::reactive({
-  #   fig.wright.nested()[["wright.output"]] %>%
-  #     WrightmapElms(.)
-  # })
-  #   
-  #   output$table8<-shiny::renderTable({
-  #     fig.wright() %>%
-  #       head(.)
-  #   })
-  #   
-  #   output$plot7 <-shiny::renderPlot({
-  # 
-  #     fig.wright()[[2]] %>%
-  #       ggplot(., aes(x = theta)) +
-  #       geom_histogram(aes(y=..density..), binwidth = 0.3, fill = pbts_cols("dustygrey"), col="black", na.rm = TRUE) +
-  #       geom_density(alpha=.2, fill=pbts_cols("lightblue")) +
-  #       xlim(fig.wright()[[3]], fig.wright()[[4]]) +
-  #       coord_flip() + 
-  #       scale_y_reverse() +
-  #       xlab("Student ability") +
-  #       theme_gray()+
-  #       theme(axis.title.x = element_blank(),
-  #             axis.text.x = element_blank(),
-  #             axis.ticks.x = element_blank()) -> theta.density
-  #     
-  #     
-  #     fig.wright()[[1]] %>%
-  #       ggplot(., aes(x=item, y=tam.value, label=item)) + 
-  #       geom_point(color = pbts_cols("dustygrey"), shape=18, size=3)+
-  #       scale_y_continuous(position = "right",limits=c(fig.wright()[[3]], fig.wright()[[4]]))+
-  #       geom_text_repel(col=pbts_cols("dustygrey"),size=2.5)+
-  #       theme_gray()+
-  #       theme(axis.title.x = element_blank(),
-  #             axis.text.x=element_blank(), 
-  #             axis.ticks.x=element_blank())+
-  #       ylab("Item difficulty")-> beta.plot
-  #     
-  #     #plot_grid(theta.density, beta.plot)
-  #     gridExtra::grid.arrange( theta.density , beta.plot,   ncol=2, nrow=1,widths = c(1, 1),top="Wright Map")
-  # 
-  #   })
+
  
       #Figure 8 primary analysis 
 
@@ -430,6 +384,13 @@ server <- function(input,output){
         primary()[[input$domain8]] %>% 
           as.data.frame(.) %>%
           intsvy::pisa.mean.pv(pvlabel=toupper(input$domain8), by = "stidsch",data =.) 
+      })
+      
+     gender.output <- shiny::reactive({ 
+        primary()[[input$domain8]] %>% 
+          as.data.frame(.) %>%
+          intsvy::pisa.mean.pv(pvlabel=toupper(input$domain8), by = c("stidsch","ST004Q01_15"),data =.) %>% 
+         dplyr::mutate(.,stidsch_g=paste(stidsch,ST004Q01_15,sep="_"))
       })
       
       
@@ -446,12 +407,29 @@ server <- function(input,output){
                 legend.position="top",
                 legend.title=element_blank(),
                 legend.background = element_rect(fill="#EBEBEB"),
-                plot.subtitle=element_text(face="italic"))-> g8
+                plot.subtitle=element_text(face="italic"))-> pfmce.plot
         
-        g8
+        
+        gender.output() %>% 
+          ggplot(., aes(y = Mean, x = stidsch, fill=factor(ST004Q01_15))) + 
+          geom_bar(stat="identity",position="dodge",width=0.2, alpha=.4)+
+          scale_fill_pbts(palette="RdGn", reverse = TRUE, labels=c("Girls", "Boys"))+
+          labs(y="PISA scale", x="School ID", title ="Performance of boys and girls across schools",
+               subtitle = "Average performance of students in each schools")+
+          scale_y_continuous(limits=c(200, 600),oob = rescale_none)+
+          theme_gray()+
+          theme(axis.text.x = element_text(angle = 90), 
+                legend.position="top",
+                legend.title=element_blank(),
+                legend.background = element_rect(fill="#EBEBEB"),
+                plot.subtitle=element_text(face="italic"))-> gender.plot
+        
+        gridExtra::grid.arrange(pfmce.plot,gender.plot,nrow=1,ncol=2,widths=c(1,1))
+        
         
       })
     
+
 
 #######################
 ## test level analysis#
@@ -528,10 +506,7 @@ server <- function(input,output){
       })  
       
       
-      output$killitem.ui<-shiny::renderUI({
-        shiny::checkboxGroupInput("kill", "Tick to delete the item:", inline=TRUE,
-                                  choices = kill.item())
-      })
+
       
       output$icc.ui <-shiny::renderUI({
         shiny::selectInput("icc", shiny::h5("Select an item:"), choices = kill.item())
@@ -558,7 +533,7 @@ server <- function(input,output){
                     })
       
       icc.plot <- shiny::reactive({
-        diff.output.info()[diff.output.info()$item == input$icc,2] -> xsi
+        diff.output.info()[diff.output.info()$item == input$icc,"tam.value.nat"] -> xsi
         
         data.frame(theta=info.output()$info.output.theta, Prtheta=PrItem(xsi=xsi,theta=info.output()$info.output.theta),row.names = NULL) %>%
           return(.)
@@ -572,15 +547,15 @@ server <- function(input,output){
           return(.)
       })
       
-
       
+     
       output$plot9 <- shiny::renderPlot({
         
         #item characteristic curve
         icc.plot() %>%
           ggplot(., aes(y= Prtheta, x=theta)) +
-          geom_line(color=pbts_cols("red"),size=1)+
-          labs(y="Student ability", title ="Item characteristic curve")+
+          geom_line(color=pbts_cols("orange"),size=1)+
+          labs(y="Probability of theta", title ="Item characteristic curve")+
           theme_gray()+
           theme(legend.position="top", legend.title=element_blank(),
                 legend.background = element_rect(fill="#EBEBEB"),
@@ -592,7 +567,7 @@ server <- function(input,output){
         iic.plot() %>%
            ggplot(., aes(y= item.iic, x=theta)) +
            geom_line(color=pbts_cols("oecdblue"),size=1)+
-           labs(y="Student ability", title ="Item information curve")+
+           labs(y="Information", title ="Item information curve")+
            theme_gray()+
            theme(legend.position="top", legend.title=element_blank(),
                  legend.background = element_rect(fill="#EBEBEB"),
@@ -602,11 +577,6 @@ server <- function(input,output){
          gridExtra::grid.arrange( iccPlot , iicPlot,   ncol=2, nrow=1,widths = c(0.8,1))
       })
       
-      # output$tablex<- shiny::renderTable({
-      #   fig.wright()[[1]] %>%
-      #     dplyr::mutate(., itemc=substr(item,1,9), icc = ifelse(itemc == "PM5109Q02", 1, 0)) %>%
-      #     head(.)
-      # })
 
       
       # Figure 7: Wright Map
@@ -660,26 +630,84 @@ server <- function(input,output){
         
       })
       
-      
-      
-      
-      
-      
+
       
       
       #Figure 10: test characteristic and information curves
       ##################      
       # 
-      # #test information curve
-      # info.output %>%
-      #   ggplot(., aes(y=test_info_curve,x=theta)) +
-      #   geom_line() +
-      #   geom_line(aes(y=se_curve,x=theta), color = "red")
+       kill.item1<-shiny::reactive({
+         if(input$domain10=="math") {
+           score.data() %>%
+             dplyr::select(., dplyr::matches("^PM")) %>%
+             names(.)
+         } else if(input$domain10=="read") {
+           score.data() %>%
+             dplyr::select(., dplyr::matches("^PR")) %>%
+             names(.)
+         } else if(input$domain10=="scie") {
+           score.data() %>%
+             dplyr::select(., dplyr::matches("^PS")) %>%
+            names(.)
+         } 
+       })
+      
+      
+      output$killitem.ui<-shiny::renderUI({
+        shiny::checkboxGroupInput("kill", "Tick to delete the item:", inline=TRUE,
+                                  choices = kill.item1())
+      })
+      
       # 
-      # #test characteristic curve
-      # data.frame(theta=info.output$theta, Prtest=PrTest(xsi=diff.output$tam.value,theta=info.output$theta),row.names = NULL) %>%
-      #   ggplot(., aes(y= Prtest, x=theta)) +
-      #   geom_line()
+      #data preparation
+      ##################
+      intl.diff1 <- shiny::reactive({
+        IntlPars(input$domain10,"diff")
+      })
+      
+      info.output1 <- shiny::reactive({
+        results()[[input$domain10]]["info.output"]  %>%
+          as.data.frame(.)
+      })
+      
+      diff.output1<- shiny::reactive({ 
+        
+        results()[[input$domain10]]["tam.output"] %>% 
+          as.data.frame(.) %>%
+          DiffItem(tam.mod = .,intl.tam = intl.diff1()) 
+      })
+      
+      output$plot10 <- shiny::renderPlot({
+        
+        #test information curve
+        data.frame(theta=info.output1()$info.output.theta, 
+                   info.test=info.output1()$info.output.test_info_curve,
+                   se.curve=info.output1()$info.output.se_curve,row.names = NULL) %>%
+          ggplot(., aes(y=info.test,x=theta)) +
+          geom_line(color=pbts_cols("oecdblue"),size=1) +
+          geom_line(aes(y=se.curve,x=theta), color = pbts_cols("red"), linetype= "dashed")+
+          labs(y="Probability of theta", title ="Test information curve")+
+          theme_gray()+
+          theme(legend.position="top", legend.title=element_blank(),
+                legend.background = element_rect(fill="#EBEBEB"),
+                plot.subtitle=element_text(face="italic")) -> tic.plot
+        
+        #test characteristic curve
+        data.frame(theta=info.output1()$info.output.theta, 
+                   Prtest=PrTest(xsi=diff.output1()$tam.value.nat,theta=info.output1()$info.output.theta),row.names = NULL) %>%
+          ggplot(., aes(y= Prtest, x=theta)) +
+          geom_line(color=pbts_cols("orange"),size=1)+
+          labs(y="Probability of theta", title ="Test characteristic curve")+
+          theme_gray()+
+          theme(legend.position="top", legend.title=element_blank(),
+                legend.background = element_rect(fill="#EBEBEB"),
+                plot.subtitle=element_text(face="italic")) -> tcc.plot
+        
+        # #plots together
+        gridExtra::grid.arrange( tcc.plot , tic.plot,   ncol=2, nrow=1,widths = c(0.8,1))
+        
+      })
+      
       
 }
 

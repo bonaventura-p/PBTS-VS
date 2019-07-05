@@ -93,7 +93,7 @@ DiffItem<-function(tam.mod,intl.tam) {
   
   tam.mod %>%
     dplyr::rename(., item = tam.output.item, tam.value.nat=tam.output.tam.value) %>%
-    dplyr::full_join(., intl.tam, by="item") %>%
+    dplyr::left_join(., intl.tam, by="item") %>% #check change from full_join to left join on 5/7/2019
     dplyr::mutate(., ztam.value.nat = (tam.value.nat-mean(tam.value.nat))/sd(tam.value.nat),
                   zdif = dplyr::if_else( #ztam.value is from intl.tam
                     ztam.value.nat - ztam.value >= qnorm(0.975), 1,
