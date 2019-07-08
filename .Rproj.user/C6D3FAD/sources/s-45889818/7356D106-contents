@@ -130,27 +130,47 @@ PFSscaleloop<-function(domains,resp,stu.data,raw.data,pca.data) {
 ######################
 ## PisaRescale##
 ##########################
-PisaRescale <- function(x,domn) {
+PisaRescale <- function(x,domn,trans="mean") {
   # PisaRescale convers logit scale from TAM x into PISA scale for selected domn
   # Args: x= data frame from TAM logit scale with pvs
   #     domn= domain as "read,domn,scie"
-  # Returns: a data frame with pv on a PISA scale
-  if (domn=="math") {
-    ((x+0.1344)/1.2838)*100+500 %>% 
-      return(.)
-  }
-  
-  else if(domn=="scie") {
-    ((x-0.1797)/1.0724)*100+500 %>%
-      return(.)
-  }
-  
-  else if(domn=="read") {
-    ((0.883*(x)-0.4837)/1.1002)*100+500 %>%
-      return(.)
-  }
-}
+  #       trans= transforming mean or sd
+  # Returns: a data frame with TAM estimates on a PISA scale
+ 
 
+         if (domn=="math" & trans == "mean") {
+          ((x+0.1344)/1.2838)*100+500 %>% 
+            return(.)
+        }
+        
+        else if(domn=="scie" & trans == "mean") {
+          ((x-0.1797)/1.0724)*100+500 %>%
+            return(.)
+        }
+        
+        else if(domn=="read" & trans == "mean") {
+          ((0.883*(x)-0.4837)/1.1002)*100+500 %>%
+            return(.)
+          }
+    
+  else if (domn=="math" & trans == "sd") {
+      x*77.89 %>% 
+        return(.)
+    }
+    
+    else if(domn=="scie" & trans == "sd") {
+      x*93.25 %>%
+        return(.)
+    }
+    
+    else if(domn=="read" & trans == "sd") {
+      x*80.26 %>%
+        return(.)
+    }
+  
+  
+  
+}
 
 ######################
 ## IntlPars##

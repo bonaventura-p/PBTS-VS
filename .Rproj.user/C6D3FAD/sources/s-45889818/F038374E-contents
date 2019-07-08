@@ -378,57 +378,6 @@ server <- function(input,output){
     })
     
 
- 
-      #Figure 8 primary analysis 
-
-      primary.output<- shiny::reactive({ 
-        primary()[[input$domain8]] %>% 
-          as.data.frame(.) %>%
-          intsvy::pisa.mean.pv(pvlabel=toupper(input$domain8), by = "stidsch",data =.) 
-      })
-      
-     gender.output <- shiny::reactive({ 
-        primary()[[input$domain8]] %>% 
-          as.data.frame(.) %>%
-          intsvy::pisa.mean.pv(pvlabel=toupper(input$domain8), by = c("stidsch","ST004Q01_15"),data =.) %>% 
-         dplyr::mutate(.,stidsch_g=paste(stidsch,ST004Q01_15,sep="_"))
-      })
-      
-      
-      output$plot8<- shiny::renderPlot({
-        
-        primary.output() %>% 
-          ggplot(., aes(y = Mean, x = stidsch),fill=variable) + 
-          geom_bar(stat="identity",width=0.2, alpha=.4, fill=pbts_cols("lightblue"))+  
-          labs(y="PISA scale", x="School ID", title ="Performance of students across schools",
-               subtitle = "Average performance of students in each schools")+
-          scale_y_continuous(limits=c(200, 600),oob = rescale_none)+
-          theme_gray()+
-          theme(axis.text.x = element_text(angle = 90), 
-                legend.position="top",
-                legend.title=element_blank(),
-                legend.background = element_rect(fill="#EBEBEB"),
-                plot.subtitle=element_text(face="italic"))-> pfmce.plot
-        
-        
-        gender.output() %>% 
-          ggplot(., aes(y = Mean, x = stidsch, fill=factor(ST004Q01_15))) + 
-          geom_bar(stat="identity",position="dodge",width=0.2, alpha=.4)+
-          scale_fill_pbts(palette="RdGn", reverse = TRUE, labels=c("Girls", "Boys"))+
-          labs(y="PISA scale", x="School ID", title ="Performance of boys and girls across schools",
-               subtitle = "Average performance of students in each schools")+
-          scale_y_continuous(limits=c(200, 600),oob = rescale_none)+
-          theme_gray()+
-          theme(axis.text.x = element_text(angle = 90), 
-                legend.position="right",
-                legend.title=element_blank(),
-                legend.background = element_rect(fill="#EBEBEB"),
-                plot.subtitle=element_text(face="italic"))-> gender.plot
-        
-        gridExtra::grid.arrange(pfmce.plot,gender.plot,nrow=1,ncol=2,widths=c(0.8,1))
-        
-        
-      })
     
 
 
@@ -708,6 +657,132 @@ server <- function(input,output){
         gridExtra::grid.arrange( tcc.plot , tic.plot,   ncol=2, nrow=1,widths = c(0.8,1))
         
       })
+      
+      
+      ###########################
+      ##### Results preview #####
+      ##########################
+      
+      #Figure PCA
+      
+      resdf <- shiny::reactive({
+        PCAcheck(input$domainpca,resp=score.data(),pca.data())
+      })
+        
+      output$plotpca <-shiny::renderPlot({
+      #Ability variance
+      resdf() %>%
+        ggplot(., aes(y=Sigma,x=PC)) +
+        geom_line(col=pbts_cols("oecdblue"),size=1)+
+        theme_gray()+
+        theme(legend.position="bottom", axis.title.y =element_blank()) +
+        labs(title="Model variance (sigma)",x="Number of PCs") +
+        scale_y_continuous(limits=c(0,1))  -> Sigma
+      
+      #EAP reliability
+      resdf() %>%
+        ggplot(., aes(y=EAP.rel,x=PC)) +
+        geom_line(col=pbts_cols("oecdblue"),size=1)+
+        theme_gray()+
+        theme(legend.position="bottom", axis.title.y =element_blank()) +
+        labs(title="EAP reliability",x="Number of PCs") +
+        scale_y_continuous(limits=c(0,1))  -> EAPrel
+      
+      
+      # Mean EAP
+      resdf() %>%
+        ggplot(., aes(y=Mean.EAP,x=PC)) +
+        geom_line(col=pbts_cols("oecdblue"),size=1)+
+        theme_gray()+
+        theme(legend.position="bottom", axis.title.y =element_blank()) +
+        labs(title="Mean EAP",x="Number of PCs") +
+        scale_y_continuous(limits=c(min(resdf()$Mean.EAP)-20,max(resdf()$Mean.EAP)+20)) -> MeanEAP
+      
+      # SD(EAP)
+      resdf() %>%
+        ggplot(., aes(y=SD.EAP,x=PC)) +
+        geom_line(col=pbts_cols("oecdblue"),size=1)+
+        theme_gray()+
+        theme(legend.position="bottom", axis.title.y =element_blank()) +
+        labs(title="SD(EAP)",x="Number of PCs") +
+        scale_y_continuous(limits=c(min(resdf()$SD.EAP)-15,max(resdf()$SD.EAP)+15)) -> SDEAP
+      
+      
+      # "Mean of SD(EAP) 
+      resdf() %>%
+        ggplot(., aes(y=Mean.SD.EAP,x=PC)) +
+        geom_line(col=pbts_cols("oecdblue"),size=1)+
+        theme_gray()+
+        theme(legend.position="bottom", axis.title.y =element_blank()) +
+        labs(title="Mean of SD(EAP)",x="Number of PCs") +
+        scale_y_continuous(limits=c(max(min(resdf()$Mean.SD.EAP)-15,0),max(resdf()$Mean.SD.EAP)+15))  ->M.SDEAP
+      
+      
+      # SD of SD(EAP)
+      resdf() %>%
+        ggplot(., aes(y=SD.SD.EAP,x=PC)) +
+        geom_line(col=pbts_cols("oecdblue"),size=1)+
+        theme_gray()+
+        theme(legend.position="bottom", axis.title.y =element_blank()) +
+        labs(title="Std. deviation of SD(EAP)",x="Number of PCs") +
+        scale_y_continuous(limits=c(max(min(resdf()$SD.SD.EAP)-10,0),max(resdf()$SD.SD.EAP)+10)) -> SD.SDEAP
+      
+      
+      gridExtra::grid.arrange( MeanEAP , SDEAP, EAPrel, M.SDEAP, SD.SDEAP, Sigma,   ncol=3, nrow=2, widths = c(1, 0.8, 0.8))
+      
+      })
+      
+      
+      #Figure 8 primary analysis 
+      
+      primary.output<- shiny::reactive({ 
+        primary()[[input$domain8]] %>% 
+          as.data.frame(.) %>%
+          intsvy::pisa.mean.pv(pvlabel=toupper(input$domain8), by = "stidsch",data =.) 
+      })
+      
+      gender.output <- shiny::reactive({ 
+        primary()[[input$domain8]] %>% 
+          as.data.frame(.) %>%
+          intsvy::pisa.mean.pv(pvlabel=toupper(input$domain8), by = c("stidsch","ST004Q01_15"),data =.) %>% 
+          dplyr::mutate(.,stidsch_g=paste(stidsch,ST004Q01_15,sep="_"))
+      })
+      
+      
+      output$plot8<- shiny::renderPlot({
+        
+        primary.output() %>% 
+          ggplot(., aes(y = Mean, x = stidsch),fill=variable) + 
+          geom_bar(stat="identity",width=0.2, alpha=.4, fill=pbts_cols("lightblue"))+  
+          labs(y="PISA scale", x="School ID", title ="Performance of students across schools",
+               subtitle = "Average performance of students in each schools")+
+          scale_y_continuous(limits=c(200, 600),oob = rescale_none)+
+          theme_gray()+
+          theme(axis.text.x = element_text(angle = 90), 
+                legend.position="top",
+                legend.title=element_blank(),
+                legend.background = element_rect(fill="#EBEBEB"),
+                plot.subtitle=element_text(face="italic"))-> pfmce.plot
+        
+        
+        gender.output() %>% 
+          ggplot(., aes(y = Mean, x = stidsch, fill=factor(ST004Q01_15))) + 
+          geom_bar(stat="identity",position="dodge",width=0.2, alpha=.4)+
+          scale_fill_pbts(palette="RdGn", reverse = TRUE, labels=c("Girls", "Boys"))+
+          labs(y="PISA scale", x="School ID", title ="Performance of boys and girls across schools",
+               subtitle = "Average performance of students in each schools")+
+          scale_y_continuous(limits=c(200, 600),oob = rescale_none)+
+          theme_gray()+
+          theme(axis.text.x = element_text(angle = 90), 
+                legend.position="right",
+                legend.title=element_blank(),
+                legend.background = element_rect(fill="#EBEBEB"),
+                plot.subtitle=element_text(face="italic"))-> gender.plot
+        
+        gridExtra::grid.arrange(pfmce.plot,gender.plot,nrow=1,ncol=2,widths=c(0.8,1))
+        
+        
+      })    
       
       
 }

@@ -345,3 +345,68 @@ VSDIFscale <- function(domn, resp, gender.data, gender.name) {
     return(.)
 }
 
+
+#####################
+###PCAcheck##########
+####################
+
+
+
+PCAcheck <- function(domn,resp=resp,pca.data=pca.data) {
+  # PCA check runs a series of diagnostics of the TAM model on the PCA
+  # Args: domn= PISA domains
+  #         resp = scored.data
+  #         pca.data= PCA input dummy data
+  #   
+  #  Returns: a df with  PC, Mean.EAP, SD.EAP, Mean.SD.EAP, SD.SD.EAP,EAP.rel, Sigma
+  
+  # get item parameters
+  IntlPars(domn,"diff") %>%
+    AnchorValues(domn, score.data = resp, item.data = ., irtpar = "diff") %>%
+    data.matrix(.) -> xsi.fixed
+  
+  IntlPars(domn,"slope") %>%
+    AnchorValues(domn, score.data = resp, item.data = ., irtpar = "slope") %>%
+    data.matrix(.) -> B
+  
+  dim(B)[3]<-1
+  
+  #do PCA
+  pca.res <-PcaComp(pca.data,pctvar=0.95)
+  
+  
+  #Stability of estimates as number of PCA components increases
+  resdf <- data.frame() 
+  
+  for(i in  1:length(pca.res)) {
+    
+    # join pca direct regressors and scale irt model
+    resp %>%
+      dplyr::select(.,dplyr::matches(ifelse(domn=="read","^PR\\d{4}Q\\d{2}.?$",
+                                            ifelse(domn=="math","^PM\\d{4}Q\\d{2}.?$",
+                                                   ifelse(domn=="scie","^PS\\d{4}Q\\d{2}.?$",""))))) %>%
+      TAM::tam.mml(., xsi.fixed = xsi.fixed, B = B, irtmodel = "2PL", Y = pca.res[,1:i], control=list(maxiter = 500)) -> res
+    
+    res["person"] %>%
+      #domain specific transformations
+      as.data.frame(.) %>% 
+      dplyr::mutate(., person.EAP = PisaRescale(person.EAP, domn, trans="mean"), 
+                    person.SD.EAP = PisaRescale(person.SD.EAP, domn, trans="sd")) %>% 
+      dplyr::summarize_at(.,dplyr::vars(person.EAP, person.SD.EAP),c(mean, sd)) %>% 
+      dplyr::rename(Mean.EAP=`person.EAP_function (x, ...) ...`, 
+                    Mean.SD.EAP=`person.SD.EAP_function (x, ...) ...`,
+                    SD.EAP=`person.EAP_function (x, na.rm = FALSE) ...`,
+                    SD.SD.EAP=`person.SD.EAP_function (x, na.rm = FALSE) ...`) %>%
+      cbind(., EAP.rel = res$EAP.rel,Sigma = res$variance) %>% 
+      dplyr::mutate(., PC = i) %>%
+      dplyr::select(., PC, Mean.EAP, SD.EAP, Mean.SD.EAP, SD.SD.EAP,EAP.rel, Sigma)-> EAP_res
+    
+    resdf <- rbind(resdf, data.frame(EAP_res, row.names=NULL))
+    
+  }
+  
+  resdf %>%
+    return(.)
+}
+
+

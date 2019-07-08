@@ -218,7 +218,35 @@ ui <-shiny::navbarPage("PISA-Based Test for Schools Validation Study",
                  
                  shiny::navbarMenu("Results preview",
                                    
-                                   
+                        shiny::tabPanel("PCA diagnostics",
+                                        shiny::HTML('<b> PCA diagnostics </b> </br> '),
+                                        shiny::HTML('This is a computationally intensive analysis. It could take up to 5 minutes. </br> </br>
+                                                    <p> All the categorical variables from the Student Questionnaire that are not used as direct regressors
+                                                    are dummy coded. These dummy variables, the numerical variables age of school entry (09-ST06), age of
+                                                    arrival in the country (15-ST21), as well as the recoded numerical variable (AGE) are
+                                                    analysed in a principal component analysis.  The number of component vectors that must 
+                                                    be extracted and used in the scaling model as regressors is country specific and must
+                                                    explain 95% of the total variance in all the original variables. </p> </br> <p> However, these principal components could negatively affect
+                                                    the stability of the IRT model. The following diagnostics are analysed to ensure PCA factors are behaving properly: </p> 
+                                                    <b> EAP reliability: </b> this index from Adams (2005) measures the (average) proportion of the uncertainty in the location of each student and is defined as the ratio between the variance of the ability estimates and the true population variance; </br>
+                                                    <b> EAP mean: </b> the expected a posteriori (EAP) estimate is the expected value of the posterior probability distribution of latent trait scores for a given student. The mean is computed over all students for a given number of PCA components;  </br>
+                                                    <b> EAP standard deviation (SD): </b> the standard deviation of the EAP estimates;  </br>
+                                                    <b> Mean of the SD(EAP): </b> the mean of the standard deviation of the EAP estimates;  </br>
+                                                    <b> Standard deviation of the SD(EAP): </b> the standard deviation of the standard deviation of the EAP estimates;  </br>
+                                                    <b> Model variance (sigma): </b> the variance of the prior distribution of the EAP estimate of each student determines to what extent regressors (or item responses) contribute to the estimation of ability.  </br>
+                                                     </br> </br>'),
+                                        
+                                        shiny::sidebarLayout(
+                                          shiny::sidebarPanel(
+                                            shiny::selectInput("domainpca", shiny::h5("Choose a domain:"), choices = c("math","read","scie")), 
+                                            width=2
+                                          ),
+                                          shiny::mainPanel(
+                                            shiny::plotOutput("plotpca"),
+                                            width=10
+                                          )
+                                        )
+                              ),  
                             
                          shiny::tabPanel("Primary analysis",
                            
