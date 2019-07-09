@@ -4,7 +4,7 @@
 ui <-shiny::navbarPage("PISA-Based Test for Schools Validation Study",
                  
                         shiny::tabPanel("Control room",
-                        shiny::selectInput("folder", shiny::h5("Choose a country:"), choices = c("Andorra","Japan")),        
+                        shiny::selectInput("folder", shiny::h5("Choose a country:"), choices = c("Andorra","Brazil","Japan")),        
                         shiny::HTML('</br>'),
                         shiny::checkboxInput("dodif", "Do DIF analysis", value = F), #and change choice of country with no default
                         shiny::HTML('</br>'),
@@ -120,14 +120,14 @@ ui <-shiny::navbarPage("PISA-Based Test for Schools Validation Study",
                             
                                   shiny::tabPanel("Model fit (Infit)",
                                   shiny::HTML("<b> Model fit (Infit) </b> </br>  <p> For each item parameter, the fit MNSQ (infit) index was 
-                                          used to provide an indication of the compatibility of the (international) model and the (national) data. For each student,
+                                          used to provide an indication of the compatibility of the (national) model and the (national) data. For each student,
                                           the model describes the probability of obtaining the different item scores. It is therefore 
-                                          possible to compare the model prediction (with international parameters) and what has been observed for one item across students.
+                                          possible to compare the model prediction (with national parameters) and what has been observed for one item across students.
                                           Accumulating comparisons across students gives an item-fit statistic.  </br> </br>
                                           A weighted MNSQ greater than one is associated with a low discrimination index, meaning the data 
                                           exhibits more variability than expected by the model. </br> </br>
-                                          PISA for Schools accepts small variations of MNSQ around one, however, values larger than 1.2 indicate
-                                          that the item discrimination is lower than assumed by the model, and values below 0.8 show that the item
+                                          PISA for Schools accepts small variations of MNSQ around one, however, values significantly larger than 1.2 indicate
+                                          that the item discrimination is lower than assumed by the model, and values significantly below 0.8 show that the item
                                           discrimination is higher than assumed. Only statistically significant values are reported. </p> </br> </br> "),
                                   shiny::numericInput("obs5", label = shiny::h5("Number of items to view"), 10),
                                   shiny::HTML('</br> <b> Mathematics items </b>'),
@@ -161,32 +161,94 @@ ui <-shiny::navbarPage("PISA-Based Test for Schools Validation Study",
                                   shiny::tableOutput('table6_read'),
                                   shiny::HTML('</br> <b> Science items </b>'),
                                   shiny::tableOutput('table6_scie')   
-                                     ),
-                            
-                                  shiny::tabPanel("Wright Map",
-                                    shiny::sidebarLayout(
-                                      shiny::sidebarPanel(
-                                        shiny::selectInput("domain7", shiny::h5("Choose a domain:"), choices = c("math","read","scie")), 
-                                         width=2
-                                       ),
-                                      shiny::mainPanel(
-                                        shiny::HTML('<b> Wright Map </b> </br> <p>  Theoretically, when candidates and items are opposite each other on the map, the difficulty of the item 
-                                              and the ability of the candidate are comparable, so the candidate has approximately a 50% probability
-                                              of answering the item correctly. </p> </br>   </br>'),
-                                        shiny::HTML('</br>'),
-                                        shiny::plotOutput("plot7"),
-                                         width=10
-                                         )
-                                       )
-                            )
+                                     )
                             ),
                  
+                 
                  shiny::navbarMenu("Dodgy items review",
-                                   shiny::tabPanel("TCC/Cronbach")
+                                   
+                                   shiny::tabPanel("Item information and characteristic curves",
+                                                   
+                                                   shiny::HTML('<b> Item information and characteristic curves </b> </br> </br> </br>'),
+                                                   
+                                                   shiny::sidebarLayout(
+                                                     shiny::sidebarPanel(
+                                                       shiny::selectInput("domain9", shiny::h5("Choose a domain:"), choices = c("math","read","scie")),
+                                                       shiny::uiOutput('icc.ui'),
+                                                       width=3
+                                                     ),
+                                                     shiny::mainPanel(
+                                                       shiny::plotOutput("plot9"),
+                                                       shiny::HTML('</br> </br>'),
+                                                       shiny::HTML('</br> </br>'),
+                                                       shiny::HTML('<b> Wright Map </b> </br> <p>  Theoretically, when candidates and items are opposite each other on the map, the difficulty of the item 
+                                               and the ability of the candidate are comparable, so the candidate has approximately a 50% probability
+                                                                   of answering the item correctly. </p> </br>   </br>'),
+                                                       shiny::HTML('</br>'),
+                                                       shiny::plotOutput("plot7"),
+#                                                       shiny::tableOutput('tablex') ,  
+                                                       
+                                                       width=9
+                                                     )
+                                                   )
+                                                   
+                                   ),
+                                   
+                                   shiny::tabPanel("Test information and test characteristic curves",
+                                                   
+                                                   shiny::HTML('<b> Test information and test characteristic curves </b> </br> </br> </br>'),
+                                                   
+                                                   shiny::sidebarLayout(
+                                                     shiny::sidebarPanel(
+                                                       shiny::selectInput("domain10", shiny::h5("Choose a domain:"), choices = c("math","read","scie")),
+                                                       width=2
+                                                     ),
+                                                     shiny::mainPanel(
+                                                       shiny::plotOutput("plot10"),
+                                                       width=10
+                                                     )
+                                                   ),
+                                                   shiny::HTML('</br>  </br>'),
+                                                   shiny::HTML('<b> Dodgy items </b> </br> </br> </br>'),
+                                                   shiny::uiOutput('killitem.ui')
+                                                   
+                                   )
                             
                  ),
                  
                  shiny::navbarMenu("Results preview",
+                                   
+                        shiny::tabPanel("PCA diagnostics",
+                                        shiny::HTML('<b> PCA diagnostics </b> </br> '),
+                                        shiny::HTML('This is a computationally intensive analysis. It could take up to 5 minutes. </br> </br>
+                                                    <p> All the categorical variables from the Student Questionnaire that are not used as direct regressors
+                                                    are dummy coded. These dummy variables, the numerical variables age of school entry (09-ST06), age of
+                                                    arrival in the country (15-ST21), as well as the recoded numerical variable (AGE) are
+                                                    analysed in a principal component analysis.  The number of component vectors that must 
+                                                    be extracted and used in the scaling model as regressors is country specific and must
+                                                    explain 95% of the total variance in all the original variables. </p> </br> <p> However, these principal components could negatively affect
+                                                    the stability of the IRT model. The following diagnostics are analysed to ensure PCA factors are behaving properly: </p> 
+                                                    <b> EAP reliability: </b> this index from Adams (2005) measures the (average) proportion of the uncertainty in the location of each student. It is defined as the ratio between the variance of the ability estimates and the true population variance; </br>
+                                                    <b> EAP mean: </b> the expected a posteriori (EAP) estimate is the expected value of the posterior probability distribution of latent trait scores for a given student. The mean is computed over all students for a given number of PCA components;  </br>
+                                                    <b> EAP standard deviation (SD): </b> the standard deviation of the EAP estimates;  </br>
+                                                    <b> Mean of the SD(EAP): </b> the mean of the standard deviation of the EAP estimates;  </br>
+                                                    <b> Standard deviation of the SD(EAP): </b> the standard deviation of the standard deviation of the EAP estimates;  </br>
+                                                    <b> Model variance (sigma): </b> the variance of the prior distribution of the EAP estimate of each student determines to what extent regressors (or item responses) contribute to the estimation of ability.  </br>
+                                                     </br> </br>'),
+                                        
+                                        shiny::sidebarLayout(
+                                          shiny::sidebarPanel(
+                                            shiny::selectInput("domainpca", shiny::h5("Choose a domain:"), choices = c("math","read","scie")), 
+                                            width=2
+                                          ),
+                                          shiny::mainPanel(
+                                            shiny::plotOutput("plotpca"),
+                                            width=10
+                                          )
+                                        ),
+                                        shiny::HTML('</br> </br> </br>')
+                                        
+                              ),  
                             
                          shiny::tabPanel("Primary analysis",
                            
@@ -201,11 +263,7 @@ ui <-shiny::navbarPage("PISA-Based Test for Schools Validation Study",
                                              shiny::plotOutput("plot8"),
                                          width=10
                                        )
-                                     ),
-                                     shiny::HTML('</br>  </br>'),
-                                     shiny::HTML('<b> Dodgy items </b> </br> </br> </br>'),
-                                     shiny::uiOutput('killitem.ui')
-                                     
+                                     )
                             )
                             
                  ), 

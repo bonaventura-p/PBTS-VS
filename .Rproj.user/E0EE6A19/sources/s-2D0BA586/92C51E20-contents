@@ -1,0 +1,480 @@
+#Packages and data importing ---------------------------------------
+library(dplyr)
+library(magrittr)
+library(TAM)
+library(ggplot2)
+library(xlsx)
+
+val_PFS17 <- read.csv('Z:\\Ruben - Docs\\PisaSchools\\Análises\\Validação dos itens\\PfS_Brazil_valCog.csv',stringsAsFactors = FALSE)
+##Mathematics -------------------------------------------------------
+val_PFS17M <- val_PFS17[,grepl(pattern = '^PM\\d{4}Q.*$',names(val_PFS17))]
+val_PFS17M[val_PFS17M==6] <- NA
+
+#IRT fit
+M1_M <- tam(val_PFS17M)
+summary(M1_M)
+M1_Mfit <- tam.fit(M1_M)
+M1_MWLE <- tam.wle(M1_M)
+M1_MPV <- tam.pv(M1_M)
+
+M1_MCTT <- tam.ctt(val_PFS17M, 
+                   wlescore=M1_MWLE$theta,
+                   pvscores=M1_MPV$pv, 
+                   group=NULL ,
+                   progress=TRUE
+)
+### Mathematics - Infit ------------------------------
+itens_infitM <- M1_Mfit$itemfit
+itens_infitM <- subset(itens_infitM, Infit < 0.8 | Infit > 1.2 ,select = c('parameter','Infit','Infit_t')) #zero itens em Mat
+names(itens_infitM) <- c('item','Infit','Infit_t')
+itens_infitM$item <- stringr::str_match(string = itens_infitM$item, '(^P\\w\\d{4}Q\\d{2}).*$')[,2]
+### Mathematics - Bisserial correlation --------------------------
+itens_bisseM <- M1_MCTT
+itens_bisseM <- subset(M1_MCTT, rpb.WLE < 0.30)
+itens_bisseM$Classification <- NA #Item classification as given in the 2017 workshop
+for( item in 1:nrow(itens_bisseM)){
+  if(itens_bisseM$rpb.WLE[item]<=0.01){
+    itens_bisseM$Classification[item] <- "Worst"
+  }
+  if((itens_bisseM$rpb.WLE[item]>0.01)&(itens_bisseM$rpb.WLE[item]<0.20)){
+    itens_bisseM$Classification[item] <- "Poor"
+  }
+  else{
+    itens_bisseM$Classification[item] <- "Mediocre"
+  }
+}
+itens_bisseM <- subset(itens_bisseM,rpb.WLE < 0.20 & Categ != 0, select = c('item','Categ','rpb.WLE','Classification')) 
+
+### Mathematics - Difference with International parameters ---------------------------
+inter_parsM <- xlsx::read.xlsx("Z:/Ruben - Docs/PisaSchools/RelatoriosTecnicos/Parámetros TAM.xlsx",
+                               stringsAsFactors = FALSE,sheetName = 'Math',header = TRUE,colIndex = c(1:3)) #version sent in 04/04/2018
+
+
+inter_parsM %<>%
+  `colnames<-`(c('codigo','conquest','inter_dif')) %>%
+  plyr::mutate(codigo = stringr::str_extract(codigo,'P[A-Z]\\d{4}Q\\d{2}\\w?[&step]*'))%>%
+  plyr::mutate(codigo = stringr::str_replace(codigo,'(^P\\w\\d{4}Q\\d{2}\\w?$)','\\1_Cat1'))%>%
+  plyr::mutate(codigo = stringr::str_replace(codigo,'(^P\\w\\d{4}Q\\d{2}\\w?)&step\\d?$','\\1_Cat2'))%>%
+  plyr::mutate(Categ = stringr::str_match(codigo,'.*_Cat(\\d)')[,2])%>%
+  dplyr::arrange(codigo)
+
+row.names(inter_parsM) <- inter_parsM$codigo
+#Brazilian parameters
+bras_parsM <- M1_M$xsi[,'xsi',drop=FALSE]
+names(bras_parsM) <- 'bras_dif'
+bras_parsM$codigo <- row.names(bras_parsM)
+
+#Difficulty comparison - 3 difficulties
+itens_interM <- merge(bras_parsM,inter_parsM,by='codigo', all = TRUE)
+
+###Scatterplots  - data points
+y_interM <- (itens_interM$bras_dif - mean(itens_interM$bras_dif))/sd(itens_interM$bras_dif)
+x_interM <- (itens_interM$inter_dif - mean(itens_interM$inter_dif))/sd(itens_interM$inter_dif)
+df_scatter <- data.frame(x = x_interM, 
+                         y = y_interM,
+                         item = stringr::str_match(itens_interM$codigo, '(^P\\w\\d{4}Q\\d{2}).*')[,2],
+                         Categ = stringr::str_match(itens_interM$codigo, '.*_Cat(\\d)$')[,2],
+                         grupo = "No difference", stringsAsFactors = FALSE)
+###Filtering items w. sig. difference:
+itens_interM %<>%
+  plyr::mutate(comp_itens = (bras_dif-mean(bras_dif))/sd(bras_dif) - (inter_dif-mean(inter_dif))/sd(inter_dif) ) %>%
+  subset(comp_itens < -1.96 | comp_itens > 1.96, select = c('codigo', 'Categ','bras_dif', 'inter_dif','comp_itens'))%>%
+  setNames(c('item','Categ','Diff_BRA','Diff_OCDE','BRA-OCDE'))%>%
+  mutate(item = stringr::str_match(string = item,pattern = '(^P\\w\\d{4}Q\\d{2}).*')[,2])
+
+###Scatterplots - labels
+for(linhas in 1:nrow(itens_interM)){
+  df_scatter[df_scatter$item==itens_interM[linhas,'item']&df_scatter$Categ==itens_interM[linhas,'Categ'],'grupo'] <- 'Difference'
+}
+
+###Plots
+df_plotM <- ggplot(df_scatter, aes(x, y)) +  geom_smooth(method = 'lm', se = FALSE, color = 'black', size = 0.7) + geom_point(size = 2, alpha  = 1, aes(color = grupo)) + theme(text = element_text(size=20),legend.title = element_blank()) 
+df_plotM <- df_plotM + scale_color_manual(values = c('Difference' ="#13073A","No difference"  = "#887CAF"))
+df_plotM <- df_plotM + xlab("International parameters") + ylab("National parameters") 
+###Exportation
+png(filename = 'Scatter_Math.png',width = 1200,height = 544)
+print( df_plotM) 
+dev.off()
+
+
+### Mathematics - Gender DIF ---------------
+formula_M <- ~item+item:step+item*sexo 
+sexo <- data.frame(sexo = val_PFS17$gender, stringsAsFactors = FALSE)
+difsex_M <- tam.mml.mfr(val_PFS17M, facets=sexo , formulaA = formula_M) #Facet model fit
+
+##Using the overall xsi
+# Masc_M <- subset(difsex_M$item, grepl(pattern = '.*?MAS$',item), select = 'xsi.item') #Boys
+# row.names(Masc_M) <- stringr::str_match(string = row.names(Masc_M),pattern = '(^P\\w\\d{4}Q\\d+).*')[,2]
+# names(Masc_M) <- "Xsi_M"
+# Femi_M <- subset(difsex_M$item, grepl(pattern = '.*?FEM$',item), select = 'xsi.item') #Girls
+# row.names(Femi_M) <- stringr::str_match(string = row.names(Femi_M),pattern = '(^P\\w\\d{4}Q\\d+).*')[,2]
+# names(Femi_M) <- 'Xsi_F'
+# 
+# itens_difM <- cbind(Masc_M,Femi_M, deparse.level = 1)
+# itens_difM <- mutate(itens_difM, 
+#                      item = row.names(itens_difM),
+#                      dif_M_F = Xsi_M - Xsi_F)
+# itens_difM <- select(itens_difM,item,Xsi_M,Xsi_F,dif_M_F)
+# itens_difM <- subset(itens_difM,abs(dif_M_F)>0.20)
+# names(itens_difM) <- c('item','Param_MAS','Param_FEM','MAS-FEM')
+##Using facets
+difsex_M$xsi.facets %>%
+  filter(facet == 'item:sexo') %>%
+  select(-facet) %>%
+  subset(grepl(pattern = '.*?MAS$',parameter)) %>%
+  mutate(item = stringr::str_extract(parameter,'P[A-Z]\\d{4}Q\\d{2}[A-Z]*')) %>%
+  select(item,xsi) %>%
+  {.} -> Masc_M
+
+difsex_M$xsi.facets %>%
+  filter(facet == 'item:sexo') %>%
+  select(-facet) %>%
+  subset(grepl(pattern = '.*?FEM$',parameter)) %>%
+  mutate(item = stringr::str_extract(parameter,'P[A-Z]\\d{4}Q\\d{2}[A-Z]*')) %>%
+  select(item,xsi) %>%
+  {.} -> Femi_M
+
+itens_difM <- merge(Masc_M,Femi_M, by = 'item', all = TRUE,suffixes = c('_M','_F'))
+row.names(itens_difM) <- itens_difM$item
+itens_difM <- subset(itens_difM,abs(xsi_F) >=0.25)
+
+
+
+#Consolidating the results so far 
+Itens_ProbM <- itens_infitM
+Itens_ProbM %<>%
+  merge(x = ., y = itens_bisseM, all = TRUE, by = 'item') %>%
+  merge(x = ., y = itens_interM, all = TRUE, by = c('item','Categ')) %>%
+  merge(x = ., y = itens_difM, all = TRUE, by = 'item') %>%
+  arrange(item, Categ)
+
+### Mathematics - Item Discrimination ------------------
+val_PFS17M %>%
+  summarize_at(vars(matches('^P\\w\\d{4}Q.*$')),function(x){cor(x,M1_MWLE$PersonScores,use = 'complete.obs')}) %>%
+  t() %>%
+  data.frame() %>%
+  setNames('Disc') %>%
+  subset(Disc <.20)%>%
+  cbind(item = row.names(.)) %>%
+  merge( x = Itens_ProbM, y = ., by = 'item', all = TRUE) %>%
+  {.} -> Itens_ProbM
+
+#Final spreadsheet
+xlsx::write.xlsx(Itens_ProbM,'Dodgy_items.xlsx',sheetName = 'Math',row.names = FALSE,append = FALSE,showNA = FALSE)
+
+
+##Reading ----------------------------------------------
+val_PFS17P <- val_PFS17[,grepl(pattern = '^PR\\d{4}Q.*$',names(val_PFS17))]
+val_PFS17P[val_PFS17P==6] <- NA
+
+#IRT fit
+M1_P <- tam(val_PFS17P)
+summary(M1_P)
+M1_Pfit <- tam.fit(M1_P)
+M1_PWLE <- tam.wle(M1_P)
+M1_PPV <- tam.pv(M1_P)
+
+M1_PCTT <- tam.ctt(val_PFS17P, 
+                   wlescore=M1_PWLE$theta,
+                   pvscores=M1_PPV$pv, 
+                   group=NULL ,
+                   progress=TRUE
+)
+
+### Reading - Infit ------------------------------
+itens_infitP <- M1_Pfit$itemfit
+itens_infitP <- subset(itens_infitP,Infit < 0.8 | Infit > 1.2 ,select = c('parameter','Infit','Infit_t'))
+names(itens_infitP) <- c('item','Infit','Infit_t')
+itens_infitP$item <- stringr::str_match(string = itens_infitP$item, '(^P\\w\\d{4}Q\\d{2}\\w*?).*$')[,2]
+### Reading  - Bisserial Correlation --------------------------
+itens_bisseP <- M1_PCTT
+itens_bisseP <- subset(M1_PCTT, rpb.WLE < 0.30)
+itens_bisseP$Classification <- NA
+for( item in 1:nrow(itens_bisseP)){
+  if(itens_bisseP$rpb.WLE[item]<=0.01){
+    itens_bisseP$Classification[item] <- "Worst"
+  }
+  if((itens_bisseP$rpb.WLE[item]>0.01)&(itens_bisseP$rpb.WLE[item]<0.20)){
+    itens_bisseP$Classification[item] <- "Poor"
+  }
+  else{
+    itens_bisseP$Classification[item] <- "Mediocre"
+  }
+}
+itens_bisseP <- subset(itens_bisseP,rpb.WLE < 0.20 & Categ != 0, select = c('item','Categ','rpb.WLE','Classification')) #Filtrando para biss pequenas no gab e positivas no erro
+
+### Reading - Difference with international parameters --------------------------------------
+inter_parsP <- xlsx::read.xlsx("Z:\\Ruben - Docs\\PisaSchools\\RelatoriosTecnicos\\Parámetros TAM.xlsx",
+                               stringsAsFactors = FALSE,sheetName = 'Read',header = TRUE,colIndex = c(1:3)) #enviados 04/04/2018
+
+
+inter_parsP %<>%
+  `colnames<-`(c('codigo','conquest','inter_dif')) %>%
+  plyr::mutate(codigo = stringr::str_extract(codigo,'P[A-Z]\\d{4}Q\\d{2}\\w?[&step]*'))%>%
+  plyr::mutate(codigo = stringr::str_replace(codigo,'(^P\\w\\d{4}Q\\d{2}\\w?$)','\\1_Cat1'))%>%
+  plyr::mutate(codigo = stringr::str_replace(codigo,'(^P\\w\\d{4}Q\\d{2}\\w?)&step\\d?$','\\1_Cat2'))%>%
+  plyr::mutate(Categ = stringr::str_match(codigo,'.*_Cat(\\d)')[,2])%>%
+  dplyr::arrange(codigo)
+
+row.names(inter_parsP) <- inter_parsP$codigo
+#Brazilian parameters
+bras_parsP <- M1_P$xsi[,'xsi',drop=FALSE]
+names(bras_parsP) <- 'bras_dif'
+bras_parsP$codigo <- row.names(bras_parsP)
+
+#Difficulty comparison - zero items
+itens_interP <- merge(bras_parsP,inter_parsP,by='codigo', all = TRUE)
+
+###Scatterplots  - data points
+y_interP <- (itens_interP$bras_dif - mean(itens_interP$bras_dif))/sd(itens_interP$bras_dif)
+x_interP <- (itens_interP$inter_dif - mean(itens_interP$inter_dif))/sd(itens_interP$inter_dif)
+df_scatter <- data.frame(x = x_interP, 
+                         y = y_interP,
+                         item = stringr::str_match(itens_interP$codigo, '(^P\\w\\d{4}Q\\d{2}).*')[,2],
+                         Categ = stringr::str_match(itens_interP$codigo, '.*_Cat(\\d)$')[,2],
+                         grupo = "No difference", stringsAsFactors = FALSE)
+
+###Filtering items w. sig. difference:
+itens_interP %<>%
+  plyr::mutate(comp_itens = (bras_dif-mean(bras_dif))/sd(bras_dif) - (inter_dif-mean(inter_dif))/sd(inter_dif) )%>%
+  subset(comp_itens < -1.96 | comp_itens > 1.96, select = c('codigo', 'Categ','bras_dif', 'inter_dif','comp_itens'))%>%
+  setNames(c('item','Categ','Diff_BRA','Diff_OCDE','BRA-OCDE')) #No Difference
+
+#Plots
+df_plotP <- ggplot(df_scatter, aes(x, y)) +  geom_smooth(method = 'lm', se = FALSE, color = 'black', size = 0.7) + geom_point(size = 2, alpha  = 1, aes(color = grupo)) + theme(text = element_text(size=20),legend.title = element_blank()) 
+df_plotP <- df_plotP + scale_color_manual(values = c('Difference' ="#550400","No difference"  = "#D46F6A"))
+df_plotP <- df_plotP + xlab("International parameters") + ylab("National parameters") 
+#Exporting
+png(filename = 'Scatter_Reading.png',width = 1200,height = 544)
+print( df_plotP) 
+dev.off()
+
+
+### Reading - Gender DIF  ---------------
+formula_P <- ~item+item:step+item*sexo #Formula para o calculo do DIF
+sexo <- data.frame(sexo = val_PFS17$gender, stringsAsFactors = FALSE)
+difsex_P <- tam.mml.mfr(val_PFS17P, facets=sexo , formulaA = formula_P) #Facet model
+
+##using overall Xsi
+# Masc_P <- subset(difsex_P$item, grepl(pattern = '.*?MAS$',item), select = 'xsi.item') #Boys
+# row.names(Masc_P) <- stringr::str_match(string = row.names(Masc_P),pattern = '(^P\\w\\d{4}Q\\d+\\w*).*')[,2]
+# names(Masc_P) <- "Xsi_M"
+# Femi_P <- subset(difsex_P$item, grepl(pattern = '.*?FEM$',item), select = 'xsi.item') #Girls
+# row.names(Femi_P) <- stringr::str_match(string = row.names(Femi_P),pattern = '(^P\\w\\d{4}Q\\d+\\w*).*')[,2]
+# names(Femi_P) <- 'Xsi_F'
+# 
+# itens_difP <- cbind(Masc_P,Femi_P, deparse.level = 1)
+# itens_difP <- mutate(itens_difP, 
+#                      item = row.names(itens_difP),
+#                      dif_M_F = Xsi_M - Xsi_F)
+# itens_difP <- select(itens_difP,item,Xsi_M,Xsi_F,dif_M_F)
+# itens_difP <- subset(itens_difP,abs(dif_M_F)>0.20)
+# names(itens_difP) <- c('item','Param_MAS','Param_FEM','MAS-FEM')
+
+##Using facet values
+difsex_P$xsi.facets %>%
+  filter(facet == 'item:sexo') %>%
+  select(-facet) %>%
+  subset(grepl(pattern = '.*?MAS$',parameter)) %>%
+  mutate(item = stringr::str_extract(parameter,'P[A-Z]\\d{4}Q\\d{2}[A-Z]*')) %>%
+  select(item,xsi) %>%
+  {.} -> Masc_P
+
+difsex_P$xsi.facets %>%
+  filter(facet == 'item:sexo') %>%
+  select(-facet) %>%
+  subset(grepl(pattern = '.*?FEM$',parameter)) %>%
+  mutate(item = stringr::str_extract(parameter,'P[A-Z]\\d{4}Q\\d{2}[A-Z]*')) %>%
+  select(item,xsi) %>%
+  {.} -> Femi_P
+
+itens_difP <- merge(Masc_P,Femi_P, by = 'item', all = TRUE,suffixes = c('_M','_F'))
+row.names(itens_difP) <- itens_difP$item
+itens_difP <- subset(itens_difP,abs(xsi_F) >=0.25)
+
+
+#Consolidating the results so far
+Itens_ProbP <- itens_infitP
+Itens_ProbP %<>%
+  merge(x = ., y = itens_bisseP, all = TRUE, by = 'item') %>%
+  merge(x = ., y = itens_interP, all = TRUE, by = c('item','Categ')) %>%
+  merge(x = ., y = itens_difP, all = TRUE, by = 'item') %>%
+  arrange(item, Categ)
+
+
+### Reading - Item Discrimination -------------------------------
+val_PFS17P %>%
+  summarize_at(vars(matches('^P\\w\\d{4}Q.*$')),function(x){cor(x,M1_PWLE$PersonScores,use = 'complete.obs')}) %>%
+  t() %>%
+  data.frame() %>%
+  setNames('Disc') %>%
+  subset(Disc <.20) %>%
+  cbind(item = row.names(.)) %>%
+  merge( x = Itens_ProbP, y = ., by = 'item', all = TRUE) %>%
+  {.} -> Itens_ProbP
+
+xlsx::write.xlsx(Itens_ProbP,'Dodgy_items.xlsx',sheetName = 'Reading',row.names = FALSE,append = TRUE,showNA = FALSE)
+
+
+##Science ----------------------------------------
+val_PFS17S <- val_PFS17[,grepl(pattern = '^PS\\d{4}Q.*$',names(val_PFS17))]
+val_PFS17S[val_PFS17S==6] <- NA
+
+#IRT fir
+M1_S <- tam(val_PFS17S)
+summary(M1_S)
+M1_Sfit <- tam.fit(M1_S)
+M1_SWLE <- tam.wle(M1_S)
+M1_SPV <- tam.pv(M1_S)
+
+M1_SCTT <- tam.ctt(val_PFS17S, 
+                   wlescore=M1_SWLE$theta,
+                   pvscores=M1_SPV$pv, 
+                   group=NULL ,
+                   progress=TRUE
+)
+
+### Science - Infit -----------------------------
+itens_infitS <- M1_Sfit$itemfit
+itens_infitS <- subset(itens_infitS,Infit < 0.8 | Infit > 1.2,select = c('parameter','Infit','Infit_t'))
+names(itens_infitS) <- c('item','Infit','Infit_t')
+itens_infitS$item <- stringr::str_match(string = itens_infitS$item, '(^P\\w\\d{4}Q\\d{2}\\w*?).*$')[,2]
+
+### Science - Bisserial Correlation ----------------------
+itens_bisseS <- M1_SCTT
+itens_bisseS <- subset(M1_SCTT, rpb.WLE < 0.30)
+itens_bisseS$Classification <- NA
+for( item in 1:nrow(itens_bisseS)){
+  if(itens_bisseS$rpb.WLE[item]<=0.01){
+    itens_bisseS$Classification[item] <- "Worst"
+  }
+  if((itens_bisseS$rpb.WLE[item]>0.01)&(itens_bisseS$rpb.WLE[item]<0.20)){
+    itens_bisseS$Classification[item] <- "Poor"
+  }
+  else{
+    itens_bisseS$Classification[item] <- "Mediocre"
+  }
+}
+itens_bisseS <- subset(itens_bisseS,rpb.WLE < 0.20 & Categ != 0, select = c('item','Categ','rpb.WLE','Classification'))
+
+### Science - Difference with International parameters ---------------------------
+inter_parsS <- xlsx::read.xlsx("Z:\\Ruben - Docs\\PisaSchools\\RelatoriosTecnicos\\Parámetros TAM.xlsx",
+                               stringsAsFactors = FALSE,sheetName = 'Scie',header = TRUE,colIndex = c(1:3)) #enviados 04/04/2018
+
+
+inter_parsS %<>%
+  `colnames<-`(c('codigo','conquest','inter_dif')) %>%
+  plyr::mutate(codigo = stringr::str_extract(codigo,'P[A-Z]\\d{4}Q\\d{2}\\w?[&step]*'))%>%
+  plyr::mutate(codigo = stringr::str_replace(codigo,'(^P\\w\\d{4}Q\\d{2}\\w?$)','\\1_Cat1'))%>%
+  plyr::mutate(codigo = stringr::str_replace(codigo,'(^P\\w\\d{4}Q\\d{2}\\w?)&step\\d?$','\\1_Cat2'))%>%
+  plyr::mutate(Categ = stringr::str_match(codigo,'.*_Cat(\\d)')[,2])%>%
+  dplyr::arrange(codigo)
+
+row.names(inter_parsS) <- inter_parsS$codigo
+#Brazilian parameters
+bras_parsS <- M1_S$xsi[,'xsi',drop=FALSE]
+names(bras_parsS) <- 'bras_dif'
+bras_parsS$codigo <- row.names(bras_parsS)
+
+#Difficulty comparison (one item)
+itens_interS <- merge(bras_parsS,inter_parsS,by='codigo')
+
+###Scatterplots  - data points
+y_interS <- (itens_interS$bras_dif - mean(itens_interS$bras_dif))/sd(itens_interS$bras_dif)
+x_interS <- (itens_interS$inter_dif - mean(itens_interS$inter_dif))/sd(itens_interS$inter_dif)
+df_scatter <- data.frame(x = x_interS, 
+                         y = y_interS,
+                         item = stringr::str_match(itens_interS$codigo, '(^P\\w\\d{4}Q\\d{2}).*')[,2],
+                         Categ = stringr::str_match(itens_interS$codigo, '.*_Cat(\\d)$')[,2],
+                         grupo = "No difference", stringsAsFactors = FALSE)
+##Filtering items with sig. difference
+itens_interS %<>%
+  plyr::mutate(comp_itens = (bras_dif-mean(bras_dif))/sd(bras_dif) - (inter_dif-mean(inter_dif))/sd(inter_dif) ) %>%
+  subset(comp_itens < -1.96 | comp_itens > 1.96, select = c('codigo', 'Categ','bras_dif', 'inter_dif','comp_itens'))%>%
+  setNames(c('item','Categ','Diff_BRA','Diff_OCDE','BRA-OCDE')) %>%
+  mutate(item = stringr::str_match(string = item,pattern = '(^P\\w\\d{4}Q\\d{2}).*')[,2])
+
+
+###Scatterplots - labels
+for(linhas in 1:nrow(itens_interS)){
+  df_scatter[df_scatter$item==itens_interS[linhas,'item']&df_scatter$Categ==itens_interS[linhas,'Categ'],'grupo'] <- 'Difference'
+}
+
+#Plots
+df_plotP <- ggplot(df_scatter, aes(x, y)) +  geom_smooth(method = 'lm', se = FALSE, color = 'black', size = 0.7) + geom_point(size = 2, alpha  = 1, aes(color = grupo)) + theme(text = element_text(size=20),legend.title = element_blank()) 
+df_plotP <- df_plotP + scale_color_manual(values = c('Difference' ="#055301","No difference"  = "#54B04F"))
+df_plotP <- df_plotP + xlab("International parameters") + ylab("National parameters") 
+#Exportation
+png(filename = 'Scatter_Science.png',width = 1200,height = 544)
+print( df_plotP) 
+dev.off()
+
+
+### Science - Gender DIF ----------------------------------
+formula_S <- ~item+item:step+item*sexo #Formula para o calculo do DIF
+sexo <- data.frame(sexo = val_PFS17$gender, stringsAsFactors = FALSE)
+difsex_S <- tam.mml.mfr(val_PFS17S, facets=sexo , formulaA = formula_S)
+
+# Masc_S <- subset(difsex_S$item, grepl(pattern = '.*?MAS$',item), select = 'xsi.item') #Parametros dos meninos
+# row.names(Masc_S) <- stringr::str_match(string = row.names(Masc_S),pattern = '(^P\\w\\d{4}Q\\d+).*')[,2]
+# names(Masc_S) <- "Xsi_M"
+# Femi_S <- subset(difsex_S$item, grepl(pattern = '.*?FEM$',item), select = 'xsi.item') #Parametros das meninas
+# row.names(Femi_S) <- stringr::str_match(string = row.names(Femi_S),pattern = '(^P\\w\\d{4}Q\\d+).*')[,2]
+# names(Femi_S) <- 'Xsi_F'
+# 
+# itens_difS <- cbind(Masc_S,Femi_S, deparse.level = 1)
+# itens_difS <- mutate(itens_difS, 
+#                      item = row.names(itens_difS),
+#                      dif_M_F = Xsi_M - Xsi_F)
+# itens_difS <- select(itens_difS,item,Xsi_M,Xsi_F,dif_M_F)
+# itens_difS <- subset(itens_difS,abs(dif_M_F)>0.20)
+# names(itens_difS) <- c('item','Param_MAS','Param_FEM','MAS-FEM')
+
+
+difsex_S$xsi.facets %>%
+  filter(facet == 'item:sexo') %>%
+  select(-facet) %>%
+  subset(grepl(pattern = '.*?MAS$',parameter)) %>%
+  mutate(item = stringr::str_extract(parameter,'P[A-Z]\\d{4}Q\\d{2}[A-Z]*')) %>%
+  select(item,xsi) %>%
+  {.} -> Masc_S
+
+difsex_S$xsi.facets %>%
+  filter(facet == 'item:sexo') %>%
+  select(-facet) %>%
+  subset(grepl(pattern = '.*?FEM$',parameter)) %>%
+  mutate(item = stringr::str_extract(parameter,'P[A-Z]\\d{4}Q\\d{2}[A-Z]*')) %>%
+  select(item,xsi) %>%
+  {.} -> Femi_S
+
+itens_difS <- merge(Masc_S,Femi_S, by = 'item', all = TRUE,suffixes = c('_M','_F'))
+row.names(itens_difS) <- itens_difS$item
+itens_difS <- subset(itens_difS,abs(xsi_F) >=0.25)
+
+
+#Consolidando os resultados
+Itens_ProbS <- itens_infitS
+Itens_ProbS %<>%
+  merge(x = ., y = itens_bisseS, all = TRUE, by = 'item') %>%
+  merge(x = ., y = itens_interS, all = TRUE, by = c('item','Categ')) %>%
+  merge(x = ., y = itens_difS, all = TRUE, by = 'item') %>%
+  arrange(item, Categ)
+
+
+### Science - Item Discrimination -------------------------------------
+val_PFS17S %>%
+  summarize_at(vars(matches('^P\\w\\d{4}Q.*$')),function(x){cor(x,M1_SWLE$PersonScores,use = 'complete.obs')}) %>%
+  t() %>%
+  data.frame() %>%
+  setNames('Corr') %>%
+  subset(Corr <.20) %>%
+  cbind(item = row.names(.)) %>%
+  merge( x = Itens_ProbS, y = ., by = 'item', all = TRUE) %>%
+  arrange(item,Categ) %>%
+  {.} -> Itens_ProbS
+
+#Final spreadsheet
+xlsx::write.xlsx(Itens_ProbS,'Dodgy_items.xlsx',sheetName = 'Science',row.names = FALSE,append = TRUE,showNA = FALSE) 
+
+
+

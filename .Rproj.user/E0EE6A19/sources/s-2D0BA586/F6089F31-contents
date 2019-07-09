@@ -64,20 +64,21 @@ CorrFig<-function(ctt.data,intl.ctt) {
 #Criteria #2: The discrimination biserial-point for a partial credit item must be ordered
 #Criteria #3: Discrimination of the correct answer must be greater than 0,2. 
 
-PtBis <- function(ctt.data) {
+PtBis <- function(ctt.data, discr.data) {
   
   ctt.data %>%
-    dplyr::select(., ctt.output.item, ctt.output.Categ, ctt.output.rpb.WLE) %>%
-    tidyr::spread(., key = ctt.output.Categ, value = ctt.output.rpb.WLE) %>%
-    dplyr::mutate_at(.,dplyr::vars("2"),dplyr::funs(replace(.,is.na(.),1)))-> table3.input 
+    dplyr::select(., ctt.output.item, ctt.output.Categ, ctt.output.rpb.PV) %>%
+    tidyr::spread(., key = ctt.output.Categ, value = ctt.output.rpb.PV) %>%
+    dplyr::mutate_at(.,dplyr::vars("2"),dplyr::funs(replace(.,is.na(.),1))) %>%
+    dplyr::rename(., item = ctt.output.item)-> table3.input 
   
-  
-  table3.input %>%
+  discr.data %>%
+    dplyr::rename(., discr=discr.output.discr, item=discr.output.item) %>%
+    dplyr::full_join(.,table3.input,by="item") %>%
     dplyr::mutate(., crit.one = ifelse(`0` < 0, 0, 1),
-                  crit.two = ifelse(`0` < `1` & `1` < `2`, 0, 1),
-                  crit.three = ifelse(`1` > 0.2, 0, 1)) %>%
-    dplyr::select(., ctt.output.item, `1`, dplyr::matches("^crit")) %>%
-    dplyr::rename(., discr=`1`, item = ctt.output.item) -> table3.output
+                  crit.two = ifelse(`0` < `1` && `1` < `2`, 0, 1),
+                  crit.three = ifelse(`1` >= 0.2, 0, 1)) %>%
+    dplyr::select(., item, discr, dplyr::matches("^crit")) -> table3.output
   
   table3.output %>%
     return(.)
@@ -92,7 +93,7 @@ DiffItem<-function(tam.mod,intl.tam) {
   
   tam.mod %>%
     dplyr::rename(., item = tam.output.item, tam.value.nat=tam.output.tam.value) %>%
-    dplyr::full_join(., intl.tam, by="item") %>%
+    dplyr::left_join(., intl.tam, by="item") %>% #check change from full_join to left join on 5/7/2019
     dplyr::mutate(., ztam.value.nat = (tam.value.nat-mean(tam.value.nat))/sd(tam.value.nat),
                   zdif = dplyr::if_else( #ztam.value is from intl.tam
                     ztam.value.nat - ztam.value >= qnorm(0.975), 1,
@@ -111,9 +112,12 @@ DiffItem<-function(tam.mod,intl.tam) {
 
 Infit<- function(tam.fit) {
   
+  #significant deviations
+  #fit.output.Infit > 1.2 && fit.output.Infit_t >= qnorm(0.975) 
+  # fit.output.Infit < 0.8 && fit.output.Infit_t <= -qnorm(0.975)
   tam.fit %>%
-    dplyr::mutate(., w.mnsq = dplyr::if_else(fit.output.Infit > 1.2 & abs(fit.output.Infit_t)>= qnorm(0.975), 1,
-                                             dplyr::if_else(fit.output.Infit < 0.8 & abs(fit.output.Infit_t)>= qnorm(0.975), -1, 0))) %>%
+    dplyr::mutate(., w.mnsq = dplyr::if_else(fit.output.Infit > 1.2 , 1,
+                                             dplyr::if_else(fit.output.Infit < 0.8 , -1, 0))) %>%
     dplyr::select(., fit.output.parameter, fit.output.Infit,w.mnsq) %>%
     dplyr::rename(., item=fit.output.parameter,	Infit = fit.output.Infit)-> table5.output
   

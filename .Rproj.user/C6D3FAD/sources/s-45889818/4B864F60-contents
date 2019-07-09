@@ -228,7 +228,7 @@ ui <-shiny::navbarPage("PISA-Based Test for Schools Validation Study",
                                                     be extracted and used in the scaling model as regressors is country specific and must
                                                     explain 95% of the total variance in all the original variables. </p> </br> <p> However, these principal components could negatively affect
                                                     the stability of the IRT model. The following diagnostics are analysed to ensure PCA factors are behaving properly: </p> 
-                                                    <b> EAP reliability: </b> this index from Adams (2005) measures the (average) proportion of the uncertainty in the location of each student and is defined as the ratio between the variance of the ability estimates and the true population variance; </br>
+                                                    <b> EAP reliability: </b> this index from Adams (2005) measures the (average) proportion of the uncertainty in the location of each student. It is defined as the ratio between the variance of the ability estimates and the true population variance; </br>
                                                     <b> EAP mean: </b> the expected a posteriori (EAP) estimate is the expected value of the posterior probability distribution of latent trait scores for a given student. The mean is computed over all students for a given number of PCA components;  </br>
                                                     <b> EAP standard deviation (SD): </b> the standard deviation of the EAP estimates;  </br>
                                                     <b> Mean of the SD(EAP): </b> the mean of the standard deviation of the EAP estimates;  </br>
@@ -245,7 +245,9 @@ ui <-shiny::navbarPage("PISA-Based Test for Schools Validation Study",
                                             shiny::plotOutput("plotpca"),
                                             width=10
                                           )
-                                        )
+                                        ),
+                                        shiny::HTML('</br> </br> </br>')
+                                        
                               ),  
                             
                          shiny::tabPanel("Primary analysis",
