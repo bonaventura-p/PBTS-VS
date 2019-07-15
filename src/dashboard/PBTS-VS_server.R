@@ -1,9 +1,6 @@
-
-########################
-########## SERVER ###############
-###########################
-
-
+# PBTS-VS_server.R
+# Bonaventura Pacileo
+# This program defines the server object of the shiny app
 
 
 

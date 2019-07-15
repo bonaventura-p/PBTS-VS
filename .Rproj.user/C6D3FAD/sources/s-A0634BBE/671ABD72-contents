@@ -1,5 +1,5 @@
 
-# VS_shell.R
+# PBTS-VS_shell.R
 # Bonaventura Pacileo
 # This program cleans the space, loads the required packages  and shell calls all the others
 

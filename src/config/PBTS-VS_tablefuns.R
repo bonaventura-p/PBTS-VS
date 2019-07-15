@@ -1,6 +1,7 @@
 
-#table creation
-
+# PBTS-VS_tablefuns.R
+# Bonaventura Pacileo
+# This program creats the input files to the tables
 
 
 ##############################################

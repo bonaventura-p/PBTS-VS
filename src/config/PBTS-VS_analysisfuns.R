@@ -1,6 +1,6 @@
-# VS_analysisfuns.R
+# PBTS-VS_analysisfuns.R
 # Bonaventura Pacileo
-# This program defines the functions that perform all the analysis
+# This program defines the functions that are used to perform all the analysis
 
 ######################
 ## WrightMap.sim.PV##
