@@ -1,5 +1,16 @@
 # PISA for Schools
 
+**Purpose**
+
+The main purpose of the validation study of the PISA-Based Test for Schools is to assess quality, 
+reliability and comparability of the assessment instruments in the country of test. The validation study consists 
+of items psychometric properties analyses in the language of the country of test and further international comparison of items characteristics. 
+The decisions regarding item treatment for results generation and for future administrations the PBTS can also be made based on this report.
+
+The shell file creates the interactive R dashboard that allows the user to analyse the results for the available countries.
+
+
+
 **Setup**
 
 The path to push/pull files from is 
