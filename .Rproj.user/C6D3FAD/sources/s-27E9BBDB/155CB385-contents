@@ -1,0 +1,14 @@
+
+DiffItem2<-function(tam.mod,intl.tam) {
+  
+  tam.mod %>%
+    dplyr::full_join(., intl.tam, by="item") %>%
+    dplyr::mutate(., ztam.value.x = (tam.value.x-mean(tam.value.x))/sd(tam.value.x),
+                  zdif = dplyr::if_else(
+                    ztam.value.x - ztam.value.y >= qnorm(0.975), 1,
+                    dplyr::if_else(ztam.value.x - ztam.value.y <= -qnorm(0.975), -1,0))) -> table4.output
+  
+  table4.output %>%
+    return(.)
+  
+}

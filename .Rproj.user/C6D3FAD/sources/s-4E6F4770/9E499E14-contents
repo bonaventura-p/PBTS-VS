@@ -1,0 +1,253 @@
+
+# Structure: 
+# run initialisation file
+source("Scaling_Functions.R") 
+##############################################
+#data loading
+
+gold.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/data/Japan/gold.data.txt", header=T, sep="\t")
+#raw.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Andorra/raw.data.txt", header=T, sep="\t")
+score.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/data/Japan/score.data.txt", header=T, sep="\t")
+#score.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Andorra/score.data.txt", header=T, sep="\t")
+
+
+gold.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/data/Andorra/gold.data.txt", header=T, sep="\t")
+raw.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/data/Andorra/raw.data.txt", header=T, sep="\t")
+score.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/data/Andorra/score.data.txt", header=T, sep="\t")
+pca.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/data/Andorra/pca.data.txt", header=T, sep="\t")
+
+
+
+
+
+
+##############################################
+
+#getting international parameters (for now slopes Are all fixed to 1)
+IntlPars("math","diff") %>%
+  AnchorValues("math", score.data = score.data, item.data = ., irtpar = "diff") %>%
+  data.matrix(.) -> xsi.fixed
+
+IntlPars("math","slope") %>%
+  AnchorValues(domn="math", score.data = score.data, item.data = ., irtpar = "slope") %>%
+  data.matrix(.) -> B
+
+#dim input for tam.mml
+dim(B)[3] <- 1
+
+
+# 2PL TAM model with free difficulty parameters and fixed slopes = 1PL model
+score.data %>%
+  dplyr::select(., dplyr::matches("^PM")) %>%
+  TAM::tam.mml(., xsi.fixed = xsi.fixed, B = B, irtmodel="2PL", control=list(maxiter = 500)) -> tam.input
+
+
+tam.input %>%
+  TAM::IRT.informationCurves(.)->info.outputt
+
+
+#output to compute sig. diff stat
+data.frame(item = rownames(tam.input$xsi), 
+           tam.value = tam.input$xsi$xsi) -> diff.output
+
+data.frame(theta=info.outputt["theta"], 
+           test_info_curve=info.outputt["test_info_curve"],
+           se_curve=info.outputt["se_curve"],
+           t(as.data.frame(info.outputt["info_curves_item"])),row.names = NULL)-> info.output
+
+
+#test information curve
+info.output %>%
+  ggplot(., aes(y=test_info_curve,x=theta)) +
+  geom_line() +
+  geom_line(aes(y=se_curve,x=theta), color = "red")
+
+killitem<-"PM5010Q02"
+
+#item information curve
+info.output %>%
+  ggplot(., aes(y= eval(as.name(killitem)), x=theta)) +
+  geom_line()
+
+#item information curve
+info.output %>%
+  ggplot(., aes(y= PM5010Q02, x=theta)) +
+  geom_line()
+
+#item characteristics curve
+
+PrItem <- function(xsi,theta) {
+  
+  1 / (1 + exp(-1 * (theta - xsi)))
+  
+} 
+
+PrTest <- function(xsi, theta) {
+  J <- length(xsi)
+  for (j in 1:J) {
+    P <- 1 / (1 + exp(-1*(theta-xsi[j])))
+  }
+  P
+}
+
+#test characteristic curve
+data.frame(theta=info.output$theta, Prtest=PrTest(xsi=diff.output$tam.value,theta=info.output$theta),row.names = NULL) %>%
+  ggplot(., aes(y= Prtest, x=theta)) +
+  geom_line(color=pbts_cols("red"),size=1)+
+  labs(y="Student ability", title ="Item characteristic curve")+
+  theme_gray()+
+  theme(legend.position="top", legend.title=element_blank(),
+        legend.background = element_rect(fill="#EBEBEB"),
+        plot.subtitle=element_text(face="italic")) 
+
+
+
+
+diff.output[diff.output$item == killitem,2]->a
+
+#item characteristic curve
+data.frame(theta=info.output$theta, Prtheta=PrItem(xsi=a,theta=info.output$theta),row.names = NULL) %>%
+  ggplot(., aes(y= Prtheta, x=theta)) +
+  geom_line()
+
+
+
+############################################
+
+
+
+tam.input %>%
+TAM::tam.fit(.) -> fit.data
+
+fit.data[[1]] %>% as.data.frame(.) -> fit.output
+
+fit.output %<>% dplyr::rename(., fit.output.Infit=Infit, fit.output.Infit_t=Infit_t, fit.output.parameter=parameter)
+
+infit_table<-Infit(fit.output)
+
+#wle estimates
+tam.input %>% 
+  TAM::tam.wle(.)->wle.output
+
+# plausible values 
+tam.input %>% 
+  TAM::tam.pv(.,nplausible=5) -> pv.input
+
+# rel freq, pt biserial correlation
+score.data %>% 
+  dplyr::select(., dplyr::matches("^PM")) %>%
+  TAM::tam.ctt(., pvscores = pv.input$pv, wlescore = wle.output$PersonScores,  group=NULL , progress=TRUE) -> ctt.output
+
+
+ctt.data %>%
+  dplyr::select(., ctt.output.item, ctt.output.Categ, ctt.output.rpb.WLE) %>%
+  tidyr::spread(., key = ctt.output.Categ, value = ctt.output.rpb.WLE) %>%
+  dplyr::mutate_at(.,dplyr::vars("2"),dplyr::funs(replace(.,is.na(.),1)))-> table3.input 
+
+
+
+
+
+discrim<-function (x) 
+{
+  
+  #x <- na.exclude(as.matrix(x))
+  k <- ncol(x)
+  N <- nrow(x)
+  ni <- as.integer(N/3)
+  TOT <- apply(x,1,function(x){mean(x[!is.na(x)])})
+  tmpx <- cbind(x, TOT)[order(TOT), ]
+  tmpxU <- tmpx[(N + 1 - ni):N, ]
+  tmpxL <- tmpx[1:ni, ]
+  Ui <- apply(tmpxU, 2, function(x){sum(x[!is.na(x)])})
+  Li <- apply(tmpxL, 2, function(x){sum(x[!is.na(x)])})
+  discrim <- (Ui - Li)/ni
+  return(discrim[1:k])
+}
+
+score.data %>% 
+  dplyr::select(., dplyr::matches("^PM")) %>%
+  dplyr::summarize_at(dplyr::vars(dplyr::matches('^P\\w\\d{4}Q.*$')),function(x){stats::cor(x,wle.output$PersonScores,use = 'complete.obs')}) %>%
+  t() %>%
+  data.frame(disc=.,item = row.names(.))  ->b
+
+
+
+score.data %>% 
+  dplyr::select(., dplyr::matches("^PM")) ->x
+
+
+
+x <- na.exclude(as.matrix(x))
+
+
+
+
+
+
+
+
+
+
+
+
+"V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/11. Item Parameters/Data_Layout.xlsx" %>%
+  openxlsx::read.xlsx(.,sheet="ScoredResponse",colNames=TRUE) %>%
+  dplyr::select(.,Field.Name) %>% 
+  dplyr::slice(.,5:145)->new
+
+"//main.oecd.org/ASgenEDU/PISA/BACKUP/PISA/PISA for Schools/8. Report Materials/Pilot 2012/Data/Pilot Data Sets/Pilot2012_CogTestScoredResponses.sav" %>%
+  foreign::read.spss(.) %>% 
+    as.data.frame(.) %>% 
+  data.table::setnames(., old = paste('rwo', 1:141,sep='') , new = new$Field.Name) ->cog_pilot
+
+# define aux data frame
+aux <- dplyr::select(gold.data,dplyr::matches("^W_FSTUWT$|^W_FSTR\\d+$|^stidsch$|^stidstd$"))
+
+#  get direct regressors
+direct.regs <- DirectRegs(stu.data=gold.data, raw.data=raw.data) 
+  
+# do pca
+pca.res  <-  PcaComp(pca.data=pca.data) 
+    
+# join pca direct regressors
+direct.regs %<>% cbind(.,pca.res)
+
+
+domains <- c("read","math","scie")
+
+Reslist <- list()
+for(domn in domains) {
+# get item parameters
+  IntlPars(domn,"diff") %>%
+    AnchorValues(domn, score.data = score.data, item.data = ., irtpar = "diff") %>%
+    data.matrix(.) -> xsi.fixed
+  
+  IntlPars(domn,"slope") %>%
+    AnchorValues(domn, score.data = score.data, item.data = ., irtpar = "slope") %>%
+    data.matrix(.) -> B
+  dim(B)[3] <- 1
+  
+# do scaling
+#res <- PFSscale(domn=domn, resp=score.data, Y=direct.regs, B=B, xsi.fixed=xsi.fixed, aux=aux) 
+score.data %>%
+  dplyr::select(.,dplyr::matches(ifelse(domn=="read","^PR\\d{4}Q\\d{2}.?$",
+                                        ifelse(domn=="math","^PM\\d{4}Q\\d{2}.?$",
+                                               ifelse(domn=="scie","^PS\\d{4}Q\\d{2}.?$",""))))) %>%
+TAM::tam.mml(., xsi.fixed = xsi.fixed, B = B, irtmodel = "2PL", Y = direct.regs, pid=NULL, control=list(maxiter = 500)) -> res
+
+
+
+Reslist[[length(Reslist)+1]] <- res
+
+}
+
+Reslist[[1]]->read
+# do secondary analysis and plots
+
+
+
+#Steps: 
+
+
+# put all of this in a dashboard/markdown

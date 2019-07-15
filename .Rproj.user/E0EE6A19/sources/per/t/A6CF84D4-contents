@@ -1,0 +1,485 @@
+
+########################
+########## SERVER ###############
+###########################
+
+
+
+
+
+server <- function(input,output){
+  
+  # download report
+  output$downloadReport <- shiny::downloadHandler(
+    
+    filename <- shiny::reactive({
+      paste('my-report', sep = '.', switch(
+        input$format, PDF = 'pdf', HTML = 'html', Word = 'docx'))
+    }), 
+   
+    
+    
+    content = function(file) {
+      tempReport <- file.path(tempdir(), "report.Rmd")
+      file.copy("report.Rmd", tempReport, overwrite = TRUE)
+      
+      
+      out <- rmarkdown::render('report.Rmd', switch(
+        input$format,
+        PDF = rmarkdown::pdf_document(), HTML = rmarkdown::html_document(), Word = rmarkdown::word_document()
+      ))
+      file.rename(out, filename()) #changed from file to filename
+    }
+    )
+
+  #################
+  #Load data
+  ##################
+  
+
+  
+  
+  
+
+
+  # load national data sets
+  folderInput <- shiny::reactive({
+    switch(input$folder,
+           "Andorra" = paste(wd, "data", "Andorra", sep="/"),
+           "Japan" = paste(wd, "data", "Japan", sep="/"))
+  })
+
+  score.data <- shiny::reactive({
+    read.table( paste(folderInput(), "score.data.txt", sep="/"), header=T, sep="\t")
+  }) 
+
+  gold.data <- shiny::reactive({
+    read.table( paste(folderInput(), "gold.data.txt", sep="/"), header=T, sep="\t")
+  })   
+  
+  raw.data <- shiny::reactive({
+    read.table( paste(folderInput(), "raw.data.txt", sep="/"), header=T, sep="\t")
+  })   
+  
+  pca.data <- shiny::reactive({
+    read.table( paste(folderInput(), "pca.data.txt", sep="/"), header=T, sep="\t")
+  })   
+  
+ #####################
+ #run all analysis
+ #####################
+  
+  domains<-c("math","read","scie") 
+  
+  #Validation study analysis
+  results<-shiny::reactive({
+    VSscaleloop(domains=domains, resp=score.data(), dodif=input$dodif, gender.data=gold.data(), gender.name="ST004Q01_15")
+  })
+  
+  #Primary analysis
+  primary<-shiny::reactive({
+    PFSscaleloop(domains=domains, resp = score.data(), stu.data = gold.data(), 
+                 raw.data = raw.data(), pca.data = pca.data(),kill.item=input$kill)
+  })
+
+#############
+# Create tables
+#############
+  
+   lapply(domains, function(domn) {
+     
+  
+     
+     #Table 2. Correlation between score frequencies 0,1,2 pilot 
+     intl.freq <- IntlPars(domn,"freq")
+
+      corr.output<- shiny::reactive({ 
+         results()[[domn]]["ctt.output"] %>% 
+        as.data.frame(.) %>%  
+        Correl(ctt.data=.,intl.ctt = intl.freq)
+        })
+     
+     output[[paste('table2',domn,sep ="_")]] <- shiny::renderTable({
+       
+       corr.output() %>% 
+         dplyr::rename(., "Item category"=item.freq, Correlation=corr.value) 
+       })  
+  
+  #Table 3 Dodgy items based on biserial-point values 
+      ptbis.output<- shiny::reactive({ 
+        results()[[domn]]["ctt.output"] %>% 
+          as.data.frame(.) %>%
+          PtBis(ctt.data = .) 
+      })
+    
+  
+      output[[paste('table3',domn,sep ="_")]]<-shiny::renderTable({
+        
+        ptbis.output() %>%
+          dplyr::filter(.,!(crit.one ==0 & crit.two==0 & crit.three == 0))  %>%
+          dplyr::mutate_at(., dplyr::vars("crit.one"), dplyr::funs(ifelse(.== 1, "Non-negative Category 0","0"))) %>%
+          dplyr::mutate_at(., dplyr::vars("crit.two"),dplyr::funs(ifelse(.== 1, "Not ordered pt-biserial correlation","0"))) %>%
+          dplyr::mutate_at(., dplyr::vars("crit.three"),dplyr::funs(ifelse(.== 1, "Low Discrimination","0"))) %>%
+          dplyr::rename(., "Discrimination index" = discr, 'Criterion 1'= crit.one,
+                 'Criterion 2'= crit.two,
+                 'Criterion 3'= crit.three) %>%
+        head(., n=input$obs3)
+      })
+  
+  
+      # Table 4. Dodgy items based on difficulty differences
+      intl.diff <- IntlPars(domn,"diff")
+      
+      diff.output<- shiny::reactive({ 
+        results()[[domn]]["tam.output"] %>% 
+        as.data.frame(.) %>%
+        DiffItem(tam.mod = .,intl.tam = intl.diff) 
+      })
+      
+      
+      output[[paste('table4',domn,sep ="_")]]<-shiny::renderTable({
+        
+        diff.output() %>%
+          dplyr::filter(.,!(zdif==0)) %>%
+          dplyr::select(.,-zdif) %>%
+          dplyr::rename(., Item=item, 'National beta' = tam.value.nat, "International beta" = tam.value) %>%
+          head(., n=input$obs4)
+      })
+      
+      #Table 5. Dodgy items based on coefficient MNSQ
+      fit.output<- shiny::reactive({ 
+        results()[[domn]]["fit.output"] %>%
+          as.data.frame(.) %>%  
+          Infit(tam.fit = .)
+      })
+      
+      output[[paste('table5',domn,sep ="_")]]<-shiny::renderTable({ 
+  
+      fit.output() %>%  
+          dplyr::filter(., !(w.mnsq==0)) %>%
+          dplyr::select(.,-w.mnsq) %>%
+      head(., n=input$obs5)
+      })
+  
+    #Table 6. Dodgy items based on DIF criterion
+      dif.output<- shiny::reactive({ 
+        results()[[domn]]["dif.output"] %>% 
+          as.data.frame(.) %>%
+          DIFitem(DIF.mod = .)
+        })
+      
+      output[[paste('table6',domn,sep ="_")]]<-shiny::renderTable({ 
+        
+      dif.output() %>% 
+          dplyr::filter(., !(gdif==0)) %>%
+          dplyr::select(.,-gdif) %>%
+          dplyr::rename(., Girls = `1_dif.output.xsi.item`, Boys = `2_dif.output.xsi.item`) %>%
+       head(., n=input$obs6)
+      })
+    
+  
+  #Table summary
+      summary.input <- shiny::reactive({  
+        
+        if ( !(input$dodif) ) {
+          diff.output() %>%
+            dplyr::full_join(.,fit.output(),by="item")%>%
+            dplyr::select(.,dplyr::matches("item|zdif|w.mnsq")) %>%
+            dplyr::mutate(.,irtdif=substr(item,11,14),item=substr(item,1,9)) %>%
+            spread_n(.,key = irtdif, value =c("zdif","w.mnsq")) %>%
+            dplyr::full_join(.,ptbis.output(),by="item") 
+        } else if (input$dodif) {
+           diff.output() %>%
+            dplyr::full_join(.,fit.output(),by="item")%>%
+            dplyr::select(.,dplyr::matches("item|zdif|w.mnsq")) %>%
+            dplyr::mutate(.,irtdif=substr(item,11,14),item=substr(item,1,9)) %>%
+             spread_n(.,key = irtdif, value =c("zdif","w.mnsq")) %>%
+            dplyr::full_join(.,ptbis.output(),by="item") %>%
+            dplyr::full_join(.,dif.output(),by="item")
+             
+         }
+      })
+
+
+    output[[paste('summary',domn,sep ="_")]] <- shiny::renderTable({
+      
+      
+      if ( !(input$dodif)) {
+        
+       summary.input() %>%
+          dplyr::filter(.,!(crit.one ==0 & crit.two==0 & crit.three == 0 
+                    & Cat1_zdif==0 & Cat2_zdif==0 & Cat1_w.mnsq ==0 & Cat2_w.mnsq ==0)) %>%
+          dplyr::mutate_at(., dplyr::vars("crit.one"), dplyr::funs(ifelse(.== 1, "Non-negative Category 0",NA))) %>%
+          dplyr::mutate_at(., dplyr::vars("crit.two"),dplyr::funs(ifelse(.== 1, "Not ordered pt-biserial correlation",NA))) %>%
+          dplyr::mutate_at(., dplyr::vars("crit.three"),dplyr::funs(ifelse(.== 1,"Low discrimination",NA))) %>%
+          dplyr::mutate_at(.,dplyr::vars("Cat1_zdif"),dplyr::funs(ifelse(.==1,"Higher difficulty",ifelse(.==-1,"Lower difficulty",NA)))) %>% 
+          dplyr::mutate_at(.,dplyr::vars("Cat2_zdif"),dplyr::funs(ifelse(.==1,"Higher difficulty",ifelse(.==-1,"Lower difficulty",NA)))) %>%
+          dplyr::mutate_at(.,dplyr::vars("Cat1_w.mnsq"),dplyr::funs(ifelse(.==1,"MNSQ > 1.2 ",ifelse(.==-1,"MNSQ < 0.8 ",NA)))) %>%
+          dplyr::mutate_at(.,dplyr::vars("Cat2_w.mnsq"),dplyr::funs(ifelse(.==1,"MNSQ > 1.2 ",ifelse(.==-1,"MNSQ < 0.8 ",NA)))) %>%
+          dplyr::select(.,item,crit.one,crit.two, crit.three, Cat1_zdif, Cat2_zdif, Cat1_w.mnsq, Cat2_w.mnsq) %>% ##reorder
+          dplyr::rename(., 'PtBis #1'= crit.one,
+                'PtBis #2'= crit.two,'PtBis #3'= crit.three,
+                Item=item, 'IRT difficulty Cat 1' = Cat1_zdif, 
+                'IRT difficulty Cat 2' = Cat2_zdif,
+                'Infit Cat 1' = Cat1_w.mnsq,
+                'Infit Cat 2' = Cat2_w.mnsq)  %>%
+        head(.,n=input$sum)
+        
+      } else  if(input$dodif) {
+        
+        summary.input() %>%
+          dplyr::filter(.,!(crit.one ==0 & crit.two==0 & crit.three == 0 
+                     & Cat1_zdif==0 & Cat2_zdif==0 & Cat1_w.mnsq ==0 & Cat2_w.mnsq ==0 & gdif==0)) %>%
+          dplyr::mutate_at(., dplyr::vars("crit.one"), dplyr::funs(ifelse(.== 1, "Non-negative Category 0",NA))) %>%
+          dplyr::mutate_at(., dplyr::vars("crit.two"),dplyr::funs(ifelse(.== 1, "Not ordered pt-biserial correlation",NA))) %>%
+          dplyr::mutate_at(., dplyr::vars("crit.three"),dplyr::funs(ifelse(.== 1,"Low discrimination",NA))) %>%
+          dplyr::mutate_at(.,dplyr::vars("Cat1_zdif"),dplyr::funs(ifelse(.==1,"Higher difficulty",ifelse(.==-1,"Lower difficulty",NA)))) %>% 
+          dplyr::mutate_at(.,dplyr::vars("Cat2_zdif"),dplyr::funs(ifelse(.==1,"Higher difficulty",ifelse(.==-1,"Lower difficulty",NA)))) %>%
+          dplyr::mutate_at(.,dplyr::vars("Cat1_w.mnsq"),dplyr::funs(ifelse(.==1,"MNSQ > 1.2 ",ifelse(.==-1,"MNSQ < 0.8 ",NA)))) %>%
+          dplyr::mutate_at(.,dplyr::vars("Cat2_w.mnsq"),dplyr::funs(ifelse(.==1,"MNSQ > 1.2 ",ifelse(.==-1,"MNSQ < 0.8 ",NA)))) %>%
+          dplyr::mutate_at(.,dplyr::vars("gdif"),dplyr::funs(ifelse(.>0,"Boys > Girls","Girls > Boys"))) %>%
+          dplyr::select(.,item,crit.one,crit.two, crit.three, Cat1_zdif, Cat2_zdif, Cat1_w.mnsq, Cat2_w.mnsq,gdif) %>% ##reorder
+          dplyr::rename(., 'PtBis #1'= crit.one,
+                 'PtBis #2'= crit.two,'PtBis #3'= crit.three,
+                 "Item"=item, 'IRT difficulty Cat 1' = Cat1_zdif, 
+                 'IRT difficulty Cat 2' = Cat2_zdif,
+                 'Infit Cat 1' = Cat1_w.mnsq,
+                 'Infit Cat 2' = Cat2_w.mnsq,
+                 "Gender DIF"=gdif)  %>%
+          head(.,n=input$sum)
+        
+      }
+        
+     })
+    
+    
+   
+  })
+  
+############### 
+#Create figures
+############
+  
+
+    # Figure 2: CTT Difficulty comparison
+  intlfig.freq <- shiny::reactive({
+    IntlPars(input$domain2,"freq")
+  })
+  
+  corrfig.output<- shiny::reactive({ 
+    results()[[input$domain2]]["ctt.output"] %>% 
+      as.data.frame(.) %>%  
+      CorrFig(ctt.data=.,intl.ctt = intlfig.freq())
+  })
+  
+  output$plot2 <- shiny::renderPlot({
+    
+    corrfig.output() %>% 
+      ggplot(., aes(x=`1.x`, y=`1.y`,label=.$item)) +
+      geom_abline(slope=1,intercept = 0,color="lightgrey",size=0.5) +
+      geom_smooth(method=lm, se=FALSE, col=pbts_cols("oecdblue"), size=1) +
+      geom_text_repel(size=3,col=pbts_cols("oecdblue")) + #geom_text_repel not available in plotly
+      scale_x_continuous(limits = c(0, 100)) +
+      scale_y_continuous(limits = c(0, 100)) +
+      labs(x="National sample",
+           y="International sample",
+           title ="CTT Difficulty comparison",
+           subtitle = "Percentage of correct responses to the items in the national and international samples") +
+      theme_gray() +
+      theme(plot.subtitle=element_text(face="italic")) -> g2
+
+    g2
+    
+  })
+  
+  
+  #Figure 4: IRT Difficulty comparison
+  intlfig.diff <-shiny::reactive({
+    IntlPars(input$domain4,"diff")
+  }) 
+  
+  diff.fig.output<- shiny::reactive({ 
+    results()[[input$domain4]]["tam.output"] %>% 
+      as.data.frame(.) %>%
+      DiffItem(tam.mod = .,intl.tam = intlfig.diff()) 
+  })
+
+  output$plot4 <- shiny::renderPlot({
+    
+    diff.fig.output() %>%
+      dplyr::mutate(., z2dif = ifelse(zdif == 0, 0, 1)) %>%
+      ggplot(., aes(x=tam.value.nat, y=tam.value,label=ifelse(z2dif == 0, "", item),color=factor(z2dif)))+
+      geom_point(aes(size=ifelse(z2dif == 0,2,0.2)))+
+      scale_size_identity()+
+      geom_smooth(aes( group = 0), method=lm, col=pbts_cols("turquoise"), se=FALSE)+ 
+      geom_abline(slope = 1, intercept = 0, color="lightgrey", size = 0.2)+
+      geom_text_repel(aes(colour = factor(z2dif)),size=2.5) +
+      scale_color_pbts(palette="RdGn", reverse=TRUE, labels=c("Unproblematic items", "Dodgy items"))+
+      scale_x_continuous(limits = c(-3.5, 5.5))+
+      scale_y_continuous(limits = c(-3.5, 5.5))+
+      labs(x="National IRT beta parameter",
+           y="International IRT beta parameter", 
+           title ="IRT Difficulty comparison",
+           subtitle = "Estimated item difficulty in the national and international samples")+
+      theme_gray()+
+      theme(legend.position="top", legend.title=element_blank(),
+            legend.background = element_rect(fill="#EBEBEB"),
+            plot.subtitle=element_text(face="italic"))-> DiffPlot
+    
+    
+    #plot density
+    
+    diff.fig.output() %>%
+      dplyr::select(., tam.value.nat, tam.value) %>%
+      tidyr::gather(., tam.source, tam.values, factor_key=TRUE) %>%
+      ggplot(., aes(tam.values, fill = tam.source)) + 
+      geom_density(alpha=.5) + 
+      scale_fill_pbts(palette="GyBe",reverse=TRUE, labels=c("National estimates", "International estimates"))+
+      labs(x="IRT difficulty (beta parameter)", title ="IRT Difficulty distribution",
+           subtitle = "Density distribution of estimated beta parameters in national and international samples")+
+      theme_gray()+
+      theme(legend.position="top", legend.title=element_blank(),
+            legend.background = element_rect(fill="#EBEBEB"),
+            plot.subtitle=element_text(face="italic")) -> DiffDensity
+    
+    #plots together
+    gridExtra::grid.arrange( DiffPlot , DiffDensity,   ncol=2, nrow=1,widths = c(1, 0.6))
+  })
+  
+  
+  #Figure 6: Gender DIF
+  dif.fig.output<- shiny::reactive({ 
+    results()[[input$domain6]]["dif.output"] %>% 
+      as.data.frame(.) %>%
+      DIFitem(DIF.mod = .)
+  })
+
+    output$plot6 <-shiny::renderPlot({
+      
+      dif.fig.output() %>%
+        tidyr::gather(., key=gender, value=dif.value, `1_dif.output.xsi.item`:`2_dif.output.xsi.item`, factor_key=TRUE) %>%
+        ggplot(., aes(x=item, y=dif.value, group=gender)) +
+        geom_line(aes(color = gender))+
+        geom_point(aes(color = gender,shape=ifelse(gdif==0,1,16)),size=3)+
+        labs(y="IRT difficulty (beta parameter)", title ="Gender DIF",
+             subtitle = "IRT difficulty estimates for boys and girls (significant differences are shown as filled dots)")+
+        scale_color_pbts(palette="GnBe", labels=c("Girls", "Boys"))+
+        scale_shape_identity()+
+        theme_gray()+
+        theme(axis.text.x = element_text(angle = 90), 
+              axis.title.x = element_blank(),
+              legend.position="top",
+              legend.title=element_blank(),
+              legend.background = element_rect(fill="#EBEBEB"),
+              plot.subtitle=element_text(face="italic"))
+    })
+    
+# Figure 7: Wright Map
+  
+  fig.wright.nested<-shiny::reactive({
+    results()[[input$domain7]]["wright.output"]
+  })
+  
+  fig.wright<-shiny::reactive({
+    fig.wright.nested()[["wright.output"]] %>%
+      WrightmapElms(.)
+  })
+    
+    output$table8<-shiny::renderTable({
+      fig.wright() %>%
+        head(.)
+    })
+    
+    output$plot7 <-shiny::renderPlot({
+
+      fig.wright()[[2]] %>%
+        ggplot(., aes(x = theta)) +
+        geom_histogram(aes(y=..density..), binwidth = 0.3, fill = pbts_cols("dustygrey"), col="black", na.rm = TRUE) +
+        geom_density(alpha=.2, fill=pbts_cols("lightblue")) +
+        xlim(fig.wright()[[3]], fig.wright()[[4]]) +
+        coord_flip() + 
+        scale_y_reverse() +
+        xlab("Student ability") +
+        theme_gray()+
+        theme(axis.title.x = element_blank(),
+              axis.text.x = element_blank(),
+              axis.ticks.x = element_blank()) -> theta.density
+      
+      
+      fig.wright()[[1]] %>%
+        ggplot(., aes(x=item, y=tam.value, label=item)) + 
+        geom_point(color = pbts_cols("dustygrey"), shape=18, size=3)+
+        scale_y_continuous(position = "right",limits=c(fig.wright()[[3]], fig.wright()[[4]]))+
+        geom_text_repel(col=pbts_cols("dustygrey"),size=2.5)+
+        theme_gray()+
+        theme(axis.title.x = element_blank(),
+              axis.text.x=element_blank(), 
+              axis.ticks.x=element_blank())+
+        ylab("Item difficulty")-> beta.plot
+      
+      #plot_grid(theta.density, beta.plot)
+      gridExtra::grid.arrange( theta.density , beta.plot,   ncol=2, nrow=1,widths = c(1, 1),top="Wright Map")
+
+    })
+ 
+      #Figure 8 primary analysis 
+    kill.item<-shiny::reactive({
+      if(input$domain8=="math") {
+        score.data() %>%
+          dplyr::select(., dplyr::matches("^PM")) %>%
+          names(.)
+      } else if(input$domain8=="read") {
+        score.data() %>%
+          dplyr::select(., dplyr::matches("^PR")) %>%
+          names(.)
+      } else if(input$domain8=="scie") {
+        score.data() %>%
+          dplyr::select(., dplyr::matches("^PS")) %>%
+          names(.)
+      } 
+    
+    })
+    
+    output$killitem.ui<-shiny::renderUI({
+      shiny::checkboxGroupInput("kill", "Tick to delete the item:", inline=TRUE,
+                         choices = kill.item())
+    })
+    
+
+    
+      primary.output<- shiny::reactive({ 
+        primary()[[input$domain8]] %>% 
+          as.data.frame(.) %>%
+          intsvy::pisa.mean.pv(pvlabel=toupper(input$domain8), by = "stidsch",data =.) 
+      })
+      
+      
+      output$plot8<- shiny::renderPlot({
+        
+        primary.output() %>% 
+          ggplot(., aes(y = Mean, x = stidsch),fill=variable) + 
+          geom_bar(stat="identity",width=0.2, alpha=.4, fill=pbts_cols("lightblue"))+  
+          labs(y="PISA scale", x="School ID", title ="Performance of students across schools",
+               subtitle = "Average performance of students in each schools")+
+          scale_y_continuous(limits=c(200, 600),oob = rescale_none)+
+          theme_gray()+
+          theme(axis.text.x = element_text(angle = 90), 
+                legend.position="top",
+                legend.title=element_blank(),
+                legend.background = element_rect(fill="#EBEBEB"),
+                plot.subtitle=element_text(face="italic"))-> g8
+        
+        g8
+        
+      })
+    
+
+}
+
+
+
+
+
+
+# Render a renderTable or renderDataTable within an application page. renderTable uses a standard HTML table, 
+# while renderDataTable uses the DataTables Javascript library to create an interactive table with more features.

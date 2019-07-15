@@ -1,0 +1,13 @@
+
+domn<-"read"
+# marginal model for 2PL
+resp %>%
+  dplyr::select(.,dplyr::matches(ifelse(domn=="read","^PR\\d{4}Q\\d{2}.?$",
+                                        ifelse(domn=="math","^PM\\d{4}Q\\d{2}.?$",
+                                               ifelse(domn=="scie","^PS\\d{4}Q\\d{2}.?$",""))))) ->score.input
+
+score.input %>%
+  TAM::tam.mml(., xsi.fixed = xsi.fixed, B = B, irtmodel = "2PL", Y = Y, pid=NULL, control=list(maxiter = 500)) -> marginal.model
+
+# computing plausible values
+plausible.values <- TAM::tam.pv(marginal.model, nplausible = 5)

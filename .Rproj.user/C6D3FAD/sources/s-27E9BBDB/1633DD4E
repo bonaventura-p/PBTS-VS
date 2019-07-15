@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1561726192485.000,
+    "dirty" : true,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "1633DD4E",
+    "lastKnownWriteTime" : 1561728296,
+    "last_content_update" : 1561728677550,
+    "path" : "V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/src/config/PCA_analysis.R",
+    "project_path" : "src/config/PCA_analysis.R",
+    "properties" : {
+        "cursorPosition" : "139,0",
+        "scrollLine" : "117",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 10,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

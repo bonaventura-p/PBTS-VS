@@ -1,0 +1,109 @@
+
+PcaComp  <-  function(pca.data,pctvar=0.95) {
+  # PcaComp computes PCA components for a given input file and stores pctvar% components
+  # Args: pca.data= data frame with the input variables, in case of PFS all dummified stud items+age
+  #       pctvar= the threshold of % of explained variance required 
+  # Returns: a data frame with the PC components up to pctvar%
+  
+  set.seed(1992) #replicable results
+  
+  pca.data %>%
+    dplyr::select(.,dplyr::matches("^age|^AP")) %>%
+    stats::prcomp(., retx = TRUE, center = TRUE, scale. = TRUE)-> pca.res
+  
+  pca.res$x[, cumsum(pca.res$sdev^2)/sum(pca.res$sdev^2) < pctvar] %>%
+    as.data.frame(.) %>%
+    return(.)
+}
+
+
+
+
+gold.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Colombia/Round3/gold.data.txt", header=T, sep="\t")
+raw.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Colombia/Round3/raw.data.txt", header=T, sep="\t")
+score.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Colombia/Round3/score.data.txt", header=T, sep="\t")
+pca.data <- read.table("V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Data/Colombia/Round3/pca.data.txt", header=T, sep="\t")
+
+
+# define aux data frame
+aux <- dplyr::select(gold.data,dplyr::matches("^W_FSTUWT$|^W_FSTR\\d+$|^stidsch$|^stidstd$"))
+
+
+ResultsList<-list()
+
+for(i in seq(0.45,0.95,0.1)) {
+  
+  meani<-paste("Mean",i,sep="_")
+  sei<-paste("SE",i,sep="_")
+  
+  
+  #  get direct regressors
+  direct.regs <- DirectRegs(stu.data=gold.data, raw.data=raw.data) 
+  
+  # do pca
+  pca.res  <-  PcaComp(pca.data=pca.data,pctvar=i) 
+  
+
+  # join pca direct regressors
+  direct.regs %<>% cbind(.,pca.res)
+  
+  
+  # get item parameters
+  IntlPars("math","diff") %>%
+    AnchorValues("math", score.data = score.data, item.data = ., irtpar = "diff") %>%
+    data.matrix(.) -> xsi.fixed
+  
+  IntlPars("math","slope") %>%
+    AnchorValues(domn="math", score.data = score.data, item.data = ., irtpar = "slope") %>%
+    data.matrix(.) -> B
+  
+  dim(B)[3]<-1
+  
+  # do scaling
+  res <- PFSscale(domn="math", resp=score.data, Y=direct.regs, xsi.fixed=xsi.fixed, B=B, aux=aux) 
+  
+  resMean<-intsvy::pisa.mean.pv(pvlabel="MATH", by = "stidsch",data =res) 
+  
+  #creating dataset
+  #mean
+  resMean %<>%
+    dplyr::select(.,stidsch,Mean,dplyr::matches("s.e.")) %>%
+    data.table::setnames(.,c("stidsch",paste("Mean",i,sep="_"),paste("SE",i,sep="_"))) %>%
+    {.}->SchoolMath
+  
+  ResultsList[[length(ResultsList)+1]] = SchoolMath
+  
+  
+}
+
+for(i in 1:6) {
+  assign(paste0("Math_PCA", i), data.frame(ResultsList[i]))
+}
+
+Math_PCA1 %>%
+  dplyr::full_join(.,Math_PCA2,by="stidsch") %>%
+  dplyr::full_join(.,Math_PCA3,by="stidsch") %>%
+  dplyr::full_join(.,Math_PCA4,by="stidsch") %>%
+  dplyr::full_join(.,Math_PCA5,by="stidsch") %>%
+  dplyr::full_join(.,Math_PCA6,by="stidsch") ->Math_fullpca
+  
+
+Math_fullpca %>%
+  reshape(., idvar="stidsch", varying=2:13, direction="long", sep="_") %>%
+  ggplot(.,aes(x=stidsch,y=Mean,color=factor(time))) + 
+  geom_errorbar(aes(ymin=Mean-SE, ymax=Mean+SE), width=.1, alpha=0.1,
+                position=position_dodge(0.05))+
+  geom_point()+
+  scale_color_pbts(palette="Main", labels=c("45%","55%","65%","75%","85%","95%"))+
+  labs(y="Mean score in mathematics", 
+       title ="Mean score in mathematics with by % variation explained by PCA components")+
+  theme_gray()+
+    theme(axis.text.x = element_text(angle = 90), 
+          axis.title.x = element_blank(),
+          legend.position="top",
+          legend.title=element_blank(),
+          legend.background = element_rect(fill="#EBEBEB"),
+          plot.subtitle=element_text(face="italic"))
+
+
+

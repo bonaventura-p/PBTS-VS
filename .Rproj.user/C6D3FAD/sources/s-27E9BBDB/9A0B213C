@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1561578022996.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "9A0B213C",
+    "lastKnownWriteTime" : 1561578040,
+    "last_content_update" : 1561578040409,
+    "path" : "V:/Pacileo_B/NOBACKUP/PISA PM/PFS/PCAanalysis1_backup.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "254,0",
+        "scrollLine" : "223",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 9,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
