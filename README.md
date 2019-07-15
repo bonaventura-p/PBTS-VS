@@ -11,7 +11,15 @@ The path to the git command line is
 
 **Description**
 
-If you run the VS_shell.R in /src you can start using the dashboard, provided that all the necessary R packages are installed on your machine (you will not need to load them). 
+The *data* folder contains all the input data files organised by country.
+
+The *images* folder contains all the output images of the analysis plus the data flows map.
+
+The *data* folder contains all the input data files organised by country.
+
+The *output* folder contains all the output files (Rmd plus exported ones).
+
+The *src* folder contains all the script files (in R):
 
 /src:
 *  PBTS-VS_shell.R: shell file that sets the wd, loads the required packaged and execute all the other .R files;
