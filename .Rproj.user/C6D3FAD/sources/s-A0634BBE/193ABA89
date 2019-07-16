@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1563298394524.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "193ABA89",
+    "lastKnownWriteTime" : 1563298527,
+    "last_content_update" : 1563298527097,
+    "path" : "V:/PISA/BACKUP/PISA/PISA for Schools/11. Item Parameters/Validation Study/PBTS-VS/src/config/PBTS-VS_tablefuns.R",
+    "project_path" : "src/config/PBTS-VS_tablefuns.R",
+    "properties" : {
+        "cursorPosition" : "121,80",
+        "scrollLine" : "96"
+    },
+    "relative_order" : 7,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
