@@ -1,0 +1,48 @@
+score.data <-  read.table("data/Andorra/score.data.txt", header=T, sep="\t")
+gold.data <-  read.table("data/Andorra/gold.data.txt", header=T, sep="\t")
+raw.data <-  read.table("data/Andorra/raw.data.txt", header=T, sep="\t")
+pca.data <-  read.table("data/Andorra/pca.data.txt", header=T, sep="\t")
+
+resp <- score.data
+domn='math'
+pctvar=0.95
+# get item parameters
+IntlPars(domn,"diff") %>%
+  AnchorValues(domn, score.data = resp, item.data = ., irtpar = "diff") %>%
+  data.matrix(.) -> xsi.fixed
+
+IntlPars(domn,"slope") %>%
+  AnchorValues(domn, score.data = resp, item.data = ., irtpar = "slope") %>%
+  data.matrix(.) -> B
+
+dim(B)[3]<-1
+
+#do PCA
+pca.res <-PcaComp(pca.data, pctvar=pctvar)
+
+
+#Stability of estimates as number of PCA components increases
+resdf <- data.frame() 
+
+#PCAcheck <- function(domn,resp=resp,pca.data=pca.data, pctvar=0.95) {
+  score.data %>%
+  dplyr::select(.,dplyr::matches(ifelse(domn=="read","^PR\\d{4}Q\\d{2}.?$",
+                                        ifelse(domn=="math","^PM\\d{4}Q\\d{2}.?$",
+                                               ifelse(domn=="scie","^PS\\d{4}Q\\d{2}.?$",""))))) %>%
+    TAM::tam.mml(., xsi.fixed = xsi.fixed, B = B, irtmodel = "2PL", Y = pca.res[,1:length(pca.res)], control=list(maxiter = 500)) -> res  
+  
+  res["person"] %>%
+    #domain specific transformations
+    as.data.frame(.) %>% 
+    dplyr::mutate(., person.EAP = PisaRescale(person.EAP, domn, trans="mean"), 
+                  person.SD.EAP = PisaRescale(person.SD.EAP, domn, trans="sd")) %>% 
+    dplyr::summarize_at(.,dplyr::vars(person.EAP, person.SD.EAP),c(mean, sd)) %>%
+    dplyr::rename(Mean.EAP=person.EAP_fn1, 
+                  Mean.SD.EAP=person.SD.EAP_fn1,
+                  SD.EAP=person.EAP_fn2,
+                  SD.SD.EAP=person.SD.EAP_fn2) %>%
+    cbind(., EAP.rel = res$EAP.rel,Sigma = res$variance) %>% 
+    dplyr::mutate(., PC = length(pca.res)) %>%
+    dplyr::select(., PC, Mean.EAP, SD.EAP, Mean.SD.EAP, SD.SD.EAP,EAP.rel, Sigma)-> EAP_res
+  
+  

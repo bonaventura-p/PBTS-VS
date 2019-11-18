@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1573200260653.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2961129072",
+    "id" : "8C8888C9",
+    "lastKnownWriteTime" : 1573560232,
+    "last_content_update" : 1573560232,
+    "path" : "~/Documents/OECD backup/PBTS-VS/src/PBTS-VS_shell.R",
+    "project_path" : "src/PBTS-VS_shell.R",
+    "properties" : {
+        "cursorPosition" : "4,0",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

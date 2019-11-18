@@ -320,7 +320,45 @@ ui <-shiny::navbarPage(shiny::uiOutput("cntname"),
                                      )
                             )
                             
-                 )
+                 ),
+
+  shiny::navbarMenu("Gold dataset generator",
+                  
+                  shiny::tabPanel("Control panel",
+                                  shiny::HTML('<b> Description </b> <p> This panel allows to generate the PBTS gold datasets. It provides a diagnostics panel for all the required QA checks, </p> </br>'),         
+                                  shiny::sidebarPanel(
+                                    #add country
+                                    shiny::selectInput("input666", shiny::h5("Select a country: "), choices = c("Andorra","Brazil","Japan")),
+                                    width=4),
+                                  
+                                  shiny::mainPanel(
+                                    
+                                    shiny::wellPanel( shiny::HTML("<b> Checks </b> </br>"),
+                                                      shiny::selectInput("input667", shiny::h5("Items to drop: "), choices = c("PM5109Q02","PM5201Q01","PM5109Q01")),
+                                                      
+                                                      shiny::checkboxInput("input668", "Percentage of correct responses", value = F),
+                                                      
+                                                      shiny::checkboxInput("input669", "Percentage of missing responses", value = F),
+                                                      shiny::checkboxInput("input670", "Items with gender DIF", value = F),
+                                                      shiny::sliderInput("input671", "Percentage of explained variance:",  
+                                                                  min = 0, max = 100, value = 95),
+                                                      shiny::actionButton("button", "Apply changes")
+                                                      #submitButton(text = "Apply changes", icon = NULL, width = NULL)
+                                    ),
+                                    shiny::wellPanel(shiny::HTML("<b> Downloads </b> </br>"),
+                                                     #shiny::selectInput("items2", shiny::h5("Items to drop: "), choices = c("Andorra","Brazil","Japan")),
+                                                     
+                                                     shiny::checkboxInput("input672", "Download the student level dataset", value = F),
+                                                     
+                                                     shiny::checkboxInput("input673", "Download the school level dataset", value = F),
+                                                     shiny::HTML('</br>'),
+                                                     shiny::radioButtons('format', shiny::h5('Select a format for download'), c('PDF', 'HTML', 'Word'), inline = TRUE),
+                                                     shiny::downloadButton('downloadReport')
+                                    ), width = 8)
+                                  
+                  )
+)
+
 
   ) 
 
